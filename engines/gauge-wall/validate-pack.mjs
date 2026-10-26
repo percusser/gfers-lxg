@@ -1,5 +1,10 @@
 // Validates a Gauge Wall content pack. [] means the pack is good.
 // Plain node import, no DOM at import time (see content-packs/README.md).
+import { bill, bestCommit } from './bill.js';
+
+// Smallest gap, as a share of the best bill, that tells two answers apart.
+const MIN_GAP = 0.03;
+
 export function validatePack(pack) {
   const problems = [];
   const isStr = (v) => typeof v === 'string' && v.length > 0;
@@ -42,7 +47,7 @@ export function validatePack(pack) {
       else if (L.future.length !== termLength) {
         problems.push(`${tag}.future has ${L.future.length} months, but another lever has ${termLength} — every lever must run the same term`);
       }
-      for (const field of ['meters', 'ignores', 'catch', 'say']) {
+      for (const field of ['unitMeans', 'meters', 'ignores', 'catch', 'say']) {
         if (!isStr(L[field])) problems.push(`${tag}.${field} missing`);
       }
     });
@@ -50,6 +55,8 @@ export function validatePack(pack) {
       problems.push(`"months" (${pack.months}) must equal "known" + the future term length (${pack.known} + ${termLength})`);
     }
   }
+
+  if (problems.length === 0) problems.push(...playChecks(pack));
 
   if (!Array.isArray(pack.plans)) problems.push('"plans" must be an array');
   else pack.plans.forEach((p, i) => {
@@ -62,6 +69,20 @@ export function validatePack(pack) {
     if (p.until != null && (!isNum(p.until) || p.until < p.month)) problems.push(`${tag}.until must be a number >= month`);
   });
 
+  // Word list (README "Words"): the screen calls Volume, Workload and Entity "pricing models" and the learner
+  // "chooses" one, so learner-facing pack text may not bring back the wall's lever words for the same idea.
+  const RETIRED = /\b(levers?|pull|pulls|pulled|pulling)\b/i;
+  const texts = [
+    ...(Array.isArray(pack.levers) ? pack.levers : []).flatMap((L, i) => L && typeof L === 'object'
+      ? ['name', 'unit', 'unitMeans', 'meters', 'ignores', 'catch', 'say'].map(f => [`levers[${i}].${f}`, L[f]]) : []),
+    ...(Array.isArray(pack.plans) ? pack.plans : []).flatMap((p, i) => p && typeof p === 'object'
+      ? [[`plans[${i}].title`, p.title], [`plans[${i}].note`, p.note]] : []),
+  ];
+  for (const [where, t] of texts) {
+    const m = typeof t === 'string' && t.match(RETIRED);
+    if (m) problems.push(`${where} uses "${m[0]}"; say "pricing model" and "choose" (README "Words")`);
+  }
+
   if (pack.theme != null) {
     if (typeof pack.theme !== 'object' || Array.isArray(pack.theme)) problems.push('"theme" must be an object');
     else {
@@ -73,4 +94,44 @@ export function validatePack(pack) {
   }
 
   return problems;
+}
+
+// Runs the wall's own bill (bill.js, also used by the screen) on the pack: one model must win clearly,
+// at a commitment inside the knob's range, and fitting the past must not be the way to find it.
+function playChecks(pack) {
+  const out = [];
+  const results = pack.levers.map((L, i) => {
+    const tag = `levers[${i}]`;
+    if (!Number.isInteger((L.range[1] - L.range[0]) / L.step)) {
+      out.push(`${tag}.range: ${L.range[1] - L.range[0]} is not a whole number of steps of ${L.step}; make max minus min a multiple of step, or the top of the knob cannot be reached`);
+    }
+    const best = bestCommit(L, pack.overage);
+    const past = bestCommit(L, pack.overage, L.history);
+    if (best.commit === L.range[0] || best.commit === L.range[1]) {
+      out.push(`${tag}: the best commitment (${best.commit}) sits at the ${best.commit === L.range[0] ? 'bottom' : 'top'} of range; widen range so the best answer is not the end of the knob`);
+    }
+    return { L, tag, best, past };
+  });
+  if (out.length) return out;
+
+  const ranked = [...results].sort((a, b) => a.best.bill - b.best.bill);
+  const [first, second] = ranked;
+  const gap = (second.best.bill - first.best.bill) / first.best.bill;
+  if (gap < MIN_GAP) {
+    out.push(`levers: "${first.L.name}" wins by only ${(gap * 100).toFixed(1)} percent over "${second.L.name}" (${Math.round(first.best.bill)} against ${Math.round(second.best.bill)}); change the usage or rates so the best model wins by at least ${MIN_GAP * 100} percent`);
+  }
+  for (const r of results) {
+    // Doing nothing: the bill at the lowest commitment on the knob must not be the best one.
+    const atMin = bill(r.L, r.L.range[0], pack.overage);
+    if (atMin <= r.best.bill) out.push(`${r.tag}: the lowest commitment on the knob already gives the best bill; a commitment is not worth thinking about, so change range or the future usage`);
+  }
+  // Fitting the past must lose. Check the winning model; it is the answer the learner is meant to reach.
+  const fitBill = bill(first.L, first.past.commit, pack.overage);
+  const fitGap = (fitBill - first.best.bill) / first.best.bill;
+  if (first.past.commit === first.best.commit) {
+    out.push(`${first.tag}: the best commitment on the known months alone (${first.past.commit}) is also the best for the months to come, so reading the chart is enough; change history or future so the coming months need a different commitment`);
+  } else if (fitGap < MIN_GAP) {
+    out.push(`${first.tag}: fitting the known months (${first.past.commit}) bills only ${(fitGap * 100).toFixed(1)} percent more than the best (${first.best.commit}); make the coming months differ more from the past so fitting the past visibly loses`);
+  }
+  return out;
 }

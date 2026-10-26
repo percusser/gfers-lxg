@@ -1,90 +1,285 @@
-// Default content pack for engines/scale. Every learner-facing company, product,
-// industry or count lives here — the engine and its mechanics stay generic.
-// See content-packs/README.md for the pack contract.
+// Default content pack for engines/scale: a copy of content-packs/scale/default.json, so the page runs with no pack injected.
+// Every company, product and person on screen comes from the pack; the engine stays generic.
 export default {
-  id: 'default',
-  title: 'The Scale',
-  version: '1.0.0',
-  us:   { name:'Splunk',           short:'SPLUNK'  },
-  them: { name:'Elastic Security', short:'ELASTIC' },
-  // Setting words: who is buying, and what they are buying. Prose that names
-  // the situation reads these instead of a hardcoded industry/product.
-  industry: 'a regional bank',
-  category: 'SIEM',
-  // Credibility: starts full, every biased criterion you place drains it.
-  cred: { start:100, perBias:6, threshold:60 },
-  maxPlace: 5,
-  swing: 12,               // bake-off margin that takes the score from even to the top
-  // The criteria the customer already stated. They sit on their pan and always score.
-  stated: [
-    { id:'mttd',  stamp:'TIME TO DETECT', w:3, takes:'split',
-      said:'Last quarter our median time to detect was 41 minutes. The board was told 15.',
-      matters:'Their CISO already gave this number to the board.',
-      note:'Both sides have a good answer here. Neither wins it outright.' },
-    { id:'ramp',  stamp:'ANALYST RAMP', w:2, takes:'us',
-      said:'Half of tier one quit this year. A new analyst needs about three months before I trust them.',
-      matters:'Staff turnover is their real problem. Anything that speeds up training helps.',
-      note:'Their current analysts already use your search language every day.' },
-    { id:'rate',  stamp:'THREE-YEAR RATE', w:3, takes:'them',
-      said:'Finance approved a number in March. It has not moved.',
-      matters:'The budget is fixed. They will read this one literally.',
-      note:'The other side has a lower list price and leads with it.' },
-    { id:'audit', stamp:'AUDIT EVIDENCE', w:2, takes:'them',
-      said:'In October the examiner asked for 13 months of search history. We had four.',
-      matters:'A regulator already caught them short. This one has a deadline.',
-      note:'The other side sells a compliance add-on that covers this.' },
+  "id": "calder-county-audit",
+  "version": "6.0.0",
+  "title": "The Scale",
+  "client": "Calder County",
+  "clientRef": "the county",
+  "memo": {
+    "from": "Your sales manager",
+    "about": "Their failed audit"
+  },
+  "situation": [
+    "Calder County is a big county with a small IT team: eight people looking after 2,000 employees, a jail and a 911 center. The state failed them on their security audit last month. The IT director has until spring to fix it, and the county auditor has to sign off before the state checks again.",
+    "They already pay for CrowdStrike on their laptops, so CrowdStrike walked in first. This is our one meeting. Listen to the two of them. The committee decides right after."
   ],
-  // The ten you could propose. `hears` is how it sounds to the customer when you say it out loud.
-  candidates: [
-    { id:'rba', stamp:'RISK ALERTING', w:3, bias:1, takes:'us', known:true,
-      measures:'How many alerts one analyst works per shift, after related alerts are grouped.',
-      hears:'A fair test. It names their real problem: too many alerts.',
-      theirs:'Their risk scoring is set up rule by rule. Two of their references wrote their own.',
-      say:'Ask them to count the alerts an analyst actually opens per shift. That number drives their turnover.' },
-    { id:'migrate', stamp:'MIGRATION', w:2, bias:1, takes:'us', known:true,
-      measures:'Engineer weeks to move current detections, dashboards and saved searches.',
-      hears:'A fair test. Their last migration went badly, so they care.',
-      theirs:'They offer a conversion tool. Their own notes say complex searches need rework by hand.',
-      say:'They already worry about migration, so it does not sound like yours. Give a number for the rework, not a promise.' },
-    { id:'archive', stamp:'ARCHIVE SEARCH', w:3, bias:2, takes:'us', known:true,
-      measures:'Whether search can read data in object storage without loading it back first.',
-      hears:'Close to your pitch. They have seen this line in a sales deck.',
-      theirs:'They must reload archived data before they can search it. Their docs say that takes hours.',
-      say:'Tie it to the examiner and the 13 months they could not produce. Then it is an audit question.' },
-    { id:'automation', stamp:'AUTOMATION', w:2, bias:2, takes:'us', known:true,
-      measures:'How many response actions the vendor maintains, so the customer does not write them.',
-      hears:'Close to your pitch. They never asked for an integration count.',
-      theirs:'Their integration list is short. Most of it is community maintained.',
-      say:'Raise it only if they say they are short on engineers.' },
-    { id:'cloudlogs', stamp:'CLOUD LOGS', w:2, bias:1, takes:'split', known:false,
-      measures:'Whether cloud audit logs arrive without a custom connector.',
-      hears:'A fair test. Half their new systems run in one cloud.',
-      theirs:'Unknown. Assume they can do it.',
-      say:'Both sides tie here. It is safe, but it does not change the result.' },
-    { id:'sla', stamp:'SERVICE LEVEL', w:1, bias:0, takes:'split', known:false,
-      measures:'The uptime the vendor will promise in the contract.',
-      hears:'Their own words. Procurement wrote this one.',
-      theirs:'Unknown.',
-      say:'Low weight and a tie, so it is safe. It shows the list is fair.' },
-    { id:'gb', stamp:'RATE PER GB', w:3, bias:0, takes:'them', known:true,
-      measures:'List price per gigabyte of data brought in.',
-      hears:'Their own words. Finance would add this without you.',
-      theirs:'They are cheaper per gigabyte and lead with it in every deal.',
-      say:'It sounds neutral, which makes it risky. It adds a heavy criterion they already win.' },
-    { id:'latency', stamp:'DASH LATENCY', w:2, bias:1, takes:'them', known:true,
-      measures:'Seconds from an event arriving to it showing on a dashboard.',
-      hears:'A fair test. It sounds technical and neutral.',
-      theirs:'A reference customer quoted under one second. They repeat it often.',
-      say:'Neutral is not the same as good for you. They have a number ready for this one.' },
-    { id:'agents', stamp:'AGENT COUNT', w:1, bias:3, takes:'us', known:false,
-      measures:'How many machines have a data collector installed.',
-      hears:'Straight off your data sheet. It is about you, not them.',
-      theirs:'Unknown.',
-      say:'Never propose this. It is light, and it shows you wrote the list.' },
-    { id:'language', stamp:'QUERY LANGUAGE', w:2, bias:3, takes:'us', known:false,
-      measures:'Which search language the test is run in.',
-      hears:'Straight off your data sheet. Naming the language names the vendor.',
-      theirs:'Unknown.',
-      say:'Your edge is real, but they will not accept this one. Make the point through Analyst ramp instead.' },
+  "us": {
+    "name": "Splunk",
+    "product": "Splunk Enterprise Security"
+  },
+  "them": {
+    "name": "CrowdStrike",
+    "product": "Falcon Next-Gen SIEM",
+    "why": "The county already runs Falcon on its laptops, so CrowdStrike pitches its SIEM as one more part of a tool the county already has."
+  },
+  "rounds": [
+    {
+      "id": "audit",
+      "name": "The audit meeting",
+      "slots": 3,
+      "intro": "The IT director and the county auditor say what the state audit needs.",
+      "needs": [
+        {
+          "id": "year",
+          "name": "A year of searchable logs",
+          "priority": 3,
+          "said": "The state audit says we keep a year of logs from every system, not just the laptops. When the auditor asks about a login from last spring, we need the answer that day, not after a week of restoring old files.",
+          "quote": "Logs from every system, not just the laptops, kept for a year.",
+          "reqs": [
+            {
+              "id": "keep12",
+              "text": "Keeps 12 months of laptop logs"
+            },
+            {
+              "id": "keepother",
+              "text": "Keeps 12 months of logs from other systems"
+            },
+            {
+              "id": "fastold",
+              "text": "Searches old logs in seconds"
+            },
+            {
+              "id": "oneplace",
+              "text": "Old and new logs in one search"
+            }
+          ],
+          "who": "IT director"
+        },
+        {
+          "id": "every",
+          "name": "Logs from every system",
+          "priority": 3,
+          "said": "I want the firewalls, the badge doors and the 911 dispatch system in the same report as your servers and laptops.",
+          "quote": "The firewalls, the badge doors and 911 dispatch in the same report.",
+          "reqs": [
+            {
+              "id": "firewall",
+              "text": "Firewalls and network gear"
+            },
+            {
+              "id": "badge",
+              "text": "The badge doors"
+            },
+            {
+              "id": "dispatch",
+              "text": "The 911 dispatch system"
+            },
+            {
+              "id": "servers",
+              "text": "Servers and laptops"
+            }
+          ],
+          "who": "County auditor"
+        },
+        {
+          "id": "reports",
+          "name": "Reports the auditor accepts",
+          "priority": 3,
+          "said": "Every year two of us spend a month building the audit report in spreadsheets. We want it ready when the auditor asks, with a record of who looked at what, kept for seven years.",
+          "quote": "Ready when the auditor asks, with a record of who looked at what.",
+          "reqs": [
+            {
+              "id": "ready",
+              "text": "Ready-made state audit reports"
+            },
+            {
+              "id": "who",
+              "text": "Records who looked at what"
+            },
+            {
+              "id": "seven",
+              "text": "Keeps audit records for 7 years"
+            }
+          ],
+          "who": "IT director"
+        },
+        {
+          "id": "leavers",
+          "name": "Accounts of people who left",
+          "priority": 2,
+          "said": "People leave a department and their accounts stay open for months. I flagged it in the audit. When an old account gets used, I want to see everything it touched, from the badge doors to the servers.",
+          "quote": "When an old account gets used, I want to see everything it touched.",
+          "reqs": [
+            {
+              "id": "leaver",
+              "text": "Flags accounts of people who left"
+            },
+            {
+              "id": "everything",
+              "text": "Shows everything the account touched"
+            }
+          ],
+          "who": "County auditor"
+        },
+        {
+          "id": "price",
+          "name": "A price the board can plan",
+          "priority": 1,
+          "said": "The board votes on one number for three years. If the audit brings in more logs, that number can't jump.",
+          "quote": "If the audit brings in more logs, that number can't jump.",
+          "reqs": [
+            {
+              "id": "flat",
+              "text": "Price stays flat as logs grow"
+            },
+            {
+              "id": "three",
+              "text": "One price for three years"
+            }
+          ],
+          "who": "IT director"
+        }
+      ],
+      "rival": [
+        {
+          "id": "cs-logscale",
+          "name": "LogScale storage",
+          "need": "year",
+          "meets": [
+            "keep12",
+            "fastold",
+            "oneplace"
+          ],
+          "product": "Falcon LogScale",
+          "pitch": "LogScale keeps 12 months of Falcon logs from the laptops and searches old and new logs together in seconds. In the plan CrowdStrike quoted, logs from other systems are kept for 90 days."
+        },
+        {
+          "id": "cs-connectors",
+          "name": "Data connectors",
+          "need": "every",
+          "meets": [
+            "firewall",
+            "servers"
+          ],
+          "pitch": "Falcon pulls in logs from the big firewall vendors, and from servers and laptops."
+        },
+        {
+          "id": "cs-compliance",
+          "name": "Compliance dashboards",
+          "need": "reports",
+          "meets": [
+            "ready",
+            "who",
+            "seven"
+          ],
+          "pitch": "Ready-made state audit reports, a record of who looked at what, and 7 years of audit records."
+        },
+        {
+          "id": "cs-identity",
+          "name": "Identity Protection",
+          "need": "leavers",
+          "meets": [
+            "leaver"
+          ],
+          "product": "Falcon Identity Protection",
+          "pitch": "Identity Protection flags accounts of people who left and alerts the same day one signs in. It watches sign-ins only, not the badge doors or the servers' own logs."
+        },
+        {
+          "id": "cs-flex",
+          "name": "Falcon Flex pricing",
+          "need": "price",
+          "meets": [
+            "flat",
+            "three"
+          ],
+          "pitch": "One Flex price for three years. It stays flat as logs grow."
+        }
+      ],
+      "items": [
+        {
+          "id": "addons",
+          "name": "Splunkbase add-ons",
+          "need": "every",
+          "meets": [
+            "firewall",
+            "badge",
+            "dispatch",
+            "servers"
+          ],
+          "does": "Ready-made add-ons bring in logs from firewalls, the badge doors, the 911 dispatch system, servers and laptops."
+        },
+        {
+          "id": "smartstore",
+          "name": "SmartStore",
+          "need": "year",
+          "meets": [
+            "keep12",
+            "keepother",
+            "fastold",
+            "oneplace"
+          ],
+          "does": "Keeps 12 months of logs from every system in cloud storage, and searches old and new logs together in seconds."
+        },
+        {
+          "id": "auditpack",
+          "name": "Audit report pack",
+          "need": "reports",
+          "meets": [
+            "ready",
+            "who"
+          ],
+          "does": "Ready-made state audit reports, with a record of who looked at what."
+        },
+        {
+          "id": "ueba",
+          "name": "Behavior analytics",
+          "need": "leavers",
+          "meets": [
+            "leaver",
+            "everything"
+          ],
+          "does": "Flags accounts of people who left, and shows everything an account touched, from the badge doors to the servers."
+        },
+        {
+          "id": "mobile",
+          "name": "Mobile app",
+          "need": null,
+          "does": "Shows alerts and dashboards on a phone or tablet.",
+          "covers": [
+            "Alerts on a phone",
+            "Dashboards on a tablet"
+          ]
+        }
+      ]
+    }
   ],
+  "objectives": [
+    {
+      "id": "o1",
+      "text": "Given a client's needs and a rival's features, the learner can choose the features that meet more of a need than the rival does, and leave out the ones that only match or lose.",
+      "mistakes": [
+        "Chooses the feature that matches the need best without checking whether the rival matches it as well.",
+        "Chooses a feature the client didn't ask for."
+      ]
+    },
+    {
+      "id": "o2",
+      "text": "Given a feature the client didn't ask for, the learner can leave it off the scale.",
+      "mistakes": [
+        "Uses a feature because it sounds useful, though nobody in the meeting asked for it."
+      ]
+    }
+  ],
+  "objectiveMap": {
+    "o1": [
+      "/rounds/0/items/0",
+      "/rounds/0/items/1",
+      "/rounds/0/items/2",
+      "/rounds/0/items/3"
+    ],
+    "o2": [
+      "/rounds/0/items/4"
+    ]
+  }
 };

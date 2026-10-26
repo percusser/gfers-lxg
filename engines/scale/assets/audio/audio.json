@@ -75,5 +75,10 @@
     "duration": 1.5,
     "moment": "end: the beam drops their way or sits level (you do not take it)",
     "prompt": "A heavy brass scale beam dropping hard onto its iron stop, a flat heavy clunk and a short rattle of chains"
-  }
+  },
+  { "name": "bed-music", "kind": "bed", "music": true, "duration": 64, "external": true,
+    "moment": "background music, loops the whole session; starts on the first click; every sound effect dips it automatically",
+    "prompt": "Made outside this tool: engines/rpg/assets/music/LISTEN/engines/scale/loop.mp3 (seamless loop). Do not regenerate." },
+  {"name":"sting-victory","kind":"sfx","duration":2.74,"moment":"END OF RUN, passed: the engine pass result is known (audio.finish victory; the bed fades first)","note":"Installed by tools/audio/install-stings.sh from engines/rpg/assets/music/LISTEN/engines/<id>/sting-victory.mp3. Not generated: swap the LISTEN file and re-run the script."},
+  {"name":"sting-defeat","kind":"sfx","duration":6,"moment":"END OF RUN, not passed: the engine fail result is known (audio.finish defeat; the bed fades first)","note":"Installed by tools/audio/install-stings.sh from engines/rpg/assets/music/LISTEN/engines/<id>/sting-defeat.mp3. Not generated: swap the LISTEN file and re-run the script."}
 ]

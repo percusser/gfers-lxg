@@ -30,13 +30,13 @@ a { color: var(--accent); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 nav.top { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--line); }
-nav.top .in { max-width: 1440px; margin: 0 auto; padding: 0 16px; display: flex; gap: 4px; align-items: center; overflow-x: auto; scrollbar-width: none; }
+nav.top .in { max-width: 1760px; margin: 0 auto; padding: 0 16px; display: flex; gap: 4px; align-items: center; overflow-x: auto; scrollbar-width: none; }
 nav.top .brand { font-weight: 900; margin-right: 12px; white-space: nowrap; padding: 14px 0; }
 nav.top .brand b { color: var(--accent); }
 nav.top a { color: var(--muted); text-decoration: none; font-weight: 600; padding: 8px 10px; border-radius: 6px; white-space: nowrap; }
 nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--panel-2); }
 
-.wrap { max-width: 1440px; margin: 0 auto; padding-inline: 16px; }
+.wrap { max-width: 1760px; margin: 0 auto; padding-inline: 16px; }
 @media (min-width: 900px) { .wrap { padding-inline: 40px; } }
 section { padding-block: 88px 24px; }
 h1, h2, h3, h4 { font-family: var(--display); text-wrap: balance; margin: 0; }
@@ -44,7 +44,7 @@ h2 { font-size: var(--fs-2); font-weight: 900; line-height: 1.1; letter-spacing:
 h3 { font-size: var(--fs-3); font-weight: 800; line-height: 1.3; }
 h4 { font-size: var(--fs-4); font-weight: 800; line-height: 1.4; color: var(--accent); }
 .lede { font-size: var(--fs-3); line-height: 1.55; color: var(--muted); max-width: 58ch; margin: 18px 0 0; }
-p { max-width: 60ch; }
+p, li { max-width: 60ch; }
 .grad-bar { height: 4px; width: 72px; background: var(--grad); border-radius: 2px; margin-bottom: 22px; }
 .muted { color: var(--muted); }
 
@@ -69,15 +69,14 @@ figure { margin: 0; min-width: 0; }
 figcaption { color: var(--muted); margin-top: 8px; line-height: 1.45; }
 .tag { display: inline-block; font-weight: 600; line-height: 1.4; padding: 3px 10px; border-radius: 4px; background: var(--panel-2); color: var(--muted); }
 code { font-family: var(--mono); background: var(--panel-2); padding: 1px 6px; border-radius: 4px; font-size: inherit; }
-.beats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); margin-top: 32px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.beat { padding: 22px; background: var(--panel); border-right: 1px solid var(--line); }
-.beat:last-child { border-right: 0; }
-.beat .n { font-weight: 800; color: var(--accent); }
-.beat h3 { margin-top: 6px; }
-.beat p { color: var(--muted); margin: 8px 0 0; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); margin-top: 32px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.step { padding: 22px; background: var(--panel); border-right: 1px solid var(--line); }
+.step:last-child { border-right: 0; }
+.step p b { color: var(--ink); }
+.step p { color: var(--muted); margin: 8px 0 0; }
 .strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(280px, 1fr); gap: 14px; overflow-x: auto; padding-bottom: 10px; margin-top: 28px; scroll-snap-type: x mandatory; }
 .strip figure { scroll-snap-align: start; }
-.tablewrap { overflow-x: auto; margin-top: 18px; }
+.tablewrap { overflow-x: auto; margin-top: 18px; max-width: 64ch; }
 table { border-top: 1px solid var(--line); }
 table { border-collapse: collapse; width: 100%; min-width: 0; }
 th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -168,7 +167,7 @@ dialog#lb p { color: var(--ink); text-align: center; margin: 10px auto 0; }
   <div class="wrap">
     <div>
       <h1>GFERS Learning<br><span>Experience Generator</span></h1>
-      <p class="lede">LXG turns training into hands-on games. Each format is a game built around one kind of judgment: checking a request against the rules, tracing a problem to its cause, planning with limits, making the case. The format holds the world and the rules. A scenario holds the story, the people and the numbers, so one format can teach many subjects.</p>
+      <p class="lede">LXG uses AI to make enablement content people play, in place of another Rise course, knowledge check or talking head over slides. Each format is a game built around one kind of judgment: checking a request against the rules, tracing a problem to its cause, planning with limits, making the case. Claude assembles each scenario from pre-built pieces: the art, characters, sound, game engine, scoring and SCORM.</p>
       <p style="margin-top:26px"><a class="btn" href="#all">See the formats</a></p>
     </div>
     <div class="mosaic" aria-hidden="true">
@@ -182,16 +181,16 @@ dialog#lb p { color: var(--ink); text-align: center; margin: 10px auto 0; }
 <section id="teach"><div class="wrap">
   <div class="grad-bar"></div>
   <h2>Read the evidence, make a call, see what it did</h2>
-  <p class="lede">Every format runs the same three beats. The learner is never told the answer before they commit, and the game never makes the decision for them. What changes from format to format is the world and the hands-on action.</p>
-  <div class="beats">
-    <div class="beat"><div class="n">Read</div><h3>The evidence is in the world</h3><p>Papers on a desk, a chart on a wall, a customer's own words, a ticket in a queue. Looking is free.</p></div>
-    <div class="beat"><div class="n">Commit</div><h3>A call that sticks</h3><p>Stamp it, pull the lever, ship the fix, send the plan. Most calls can't be undone.</p></div>
-    <div class="beat"><div class="n">Reveal</div><h3>The world answers</h3><p>The migration slips, the alert fires late, the deal stalls on day 2. The debrief names the moment that caused it.</p></div>
+  <p class="lede">Every format runs the same three steps. The learner is never told the answer before they commit, and the game never makes the decision for them. What changes from format to format is the world and the hands-on action.</p>
+  <div class="steps">
+    <div class="step"><h3>Read</h3><p><b>The evidence is in the world.</b> Papers on a desk, a chart on a wall, a customer's own words, a ticket in a queue. Looking is free.</p></div>
+    <div class="step"><h3>Commit</h3><p><b>A call that sticks.</b> Stamp it, pull the lever, ship the fix, send the plan. Most calls can't be undone.</p></div>
+    <div class="step"><h3>Reveal</h3><p><b>The world answers.</b> The migration slips, the alert fires late, the deal stalls on day 2. The debrief names the moment that caused it.</p></div>
   </div>
   <div class="grid g3" style="margin-top:22px">
-    <div class="card"><h3>Scenarios are data</h3><p>Names, lines, numbers and right answers live in a scenario file. A new subject is a new file, not a new game.</p></div>
-    <div class="card"><h3>Checked before it ships</h3><p>Formats with a check tool refuse to build when a scenario has a broken link, a missing answer or a dead end.</p></div>
-    <div class="card"><h3>Built for an LMS</h3><p>Each game packs into a SCORM zip that reports a score and completion. Nothing is fetched from the internet while it plays.</p></div>
+    <div class="card"><h3>Built from pre-built pieces</h3><p>Pictures and graphics, characters, music and sound, the game engine, scoring and SCORM already exist. A new subject is a new scenario file, not a new game.</p></div>
+    <div class="card"><h3>Checked before it ships</h3><p>The check refuses a scenario with a broken link, a missing answer or a dead end, then opens the game in a browser and plays it through.</p></div>
+    <div class="card"><h3>Built for an LMS</h3><p>Each game packs into a SCORM zip that reports a score, completion and every choice the learner made.</p></div>
   </div>
 </div></section>
 
@@ -206,12 +205,12 @@ dialog#lb p { color: var(--ink); text-align: center; margin: 10px auto 0; }
   <div class="grad-bar"></div>
   <h2>RPG</h2>
   <div class="feature">
-    <div class="pic"><img class="shot" src="shots/rpg/play.webp" alt="RPG close-up conversation with Dev by the whiteboard"></div>
+    <div class="pic"><img class="shot" src="shots/rpg/play.webp" alt="RPG close-up: pitching Marcus Webb, a bank CIO, during an elevator ride, with four replies to choose from"></div>
     <div class="txt">
       <h3>Walk an office, talk to people, make calls the world remembers</h3>
-      <p>Long role-playing scenarios in an isometric office world. The learner walks between rooms, reads screens and whiteboards, questions people in close-up conversations and decides what to do. Trust, moods and later scenes all depend on earlier calls. It has 29 ready-made rooms, a cast of 16 people and its own scenario checker. Besides the demo, there are three sample discovery visits. You pick your character, then walk a customer's building and find out what hurts, in their own words: <em>Harbor Lane Insurance</em> (security), <em>Redwood Fashion: first visit</em> (observability) and <em>The bill keeps going up</em> (platform data).</p>
+      <p>Long role-playing scenarios in an isometric office world. The learner walks between rooms, reads screens and whiteboards, questions people in close-up conversations and decides what to do. Trust, moods and later scenes all depend on earlier calls. It has 29 ready-made rooms, a cast of 16 people and its own scenario checker. The sample, <em>Agent Observability: Discovery</em>, is a discovery visit: you pick your character, ride the elevator with Lakeshore Bank's CIO, walk the building and find the people who own its AI agents and what hurts, in their own words.</p>
       <p>Good for: incident response, stakeholder conversations, sales discovery, new-hire scenarios, anything where who you talk to and what you say matters.</p>
-      <a class="btn" href="../engines/rpg/overview/index.html">Read the RPG page</a><a class="btn ghost" href="../engines/rpg/index.html">Play the demo</a>
+      <a class="btn" href="../engines/rpg/agent-o11y-discovery/index.html">Play the sample</a>
     </div>
   </div>
 </div></section>
@@ -230,12 +229,12 @@ dialog#lb p { color: var(--ink); text-align: center; margin: 10px auto 0; }
     <figure><img class="shot" src="shots/booth/08-day-report.webp" alt="End-of-day report"><figcaption>7. The day report says what every call led to.</figcaption></figure>
   </div>
 
-  <div class="beats">
-    <div class="beat"><div class="n">1. Call next</div><h3>Someone steps up</h3><p>A bell rings, papers slide in, the person says why they need the stamp today.</p></div>
-    <div class="beat"><div class="n">2. Inspect</div><h3>Pair two things</h3><p>Any rule, field or line can be paired. Two that agree say "These two match. Nothing to ask."</p></div>
-    <div class="beat"><div class="n">3. Ask</div><h3>Hear their side</h3><p>Some explanations hold up (the customer asked in writing). Most are pressure.</p></div>
-    <div class="beat"><div class="n">4. Stamp</div><h3>Approve or Return</h3><p>The stamp lands, the person reacts, a citation prints if a rule broke.</p></div>
-    <div class="beat"><div class="n">5. Report</div><h3>What it led to</h3><p>Finance returns a deal, a clean deal stalls, a deal closes. Choices come back days later.</p></div>
+  <div class="steps">
+    <div class="step"><h3>1. Call next</h3><p><b>Someone steps up.</b> A bell rings, papers slide in, the person says why they need the stamp today.</p></div>
+    <div class="step"><h3>2. Inspect</h3><p><b>Pair two things.</b> Any rule, field or line can be paired. Two that agree say "These two match. Nothing to ask."</p></div>
+    <div class="step"><h3>3. Ask</h3><p><b>Hear their side.</b> Some explanations hold up (the customer asked in writing). Most are pressure.</p></div>
+    <div class="step"><h3>4. Stamp</h3><p><b>Approve or Return.</b> The stamp lands, the person reacts, a citation prints if a rule broke.</p></div>
+    <div class="step"><h3>5. Report</h3><p><b>What it led to.</b> Finance returns a deal, a clean deal stalls, a deal closes. Choices come back days later.</p></div>
   </div>
 
   <div class="split">
@@ -306,12 +305,12 @@ dialog#lb p { color: var(--ink); text-align: center; margin: 10px auto 0; }
     <figure><img class="shot" src="shots/journey-v3/06-debrief.webp" alt="Debrief: The Trusted Leader"><figcaption>5. The debrief ties every result to a choice.</figcaption></figure>
   </div>
 
-  <div class="beats">
-    <div class="beat"><div class="n">1. Prepare</div><h3>Buy under scarcity</h3><p>Items give starting energy or budget, block one named future problem, or unlock a better option later.</p></div>
-    <div class="beat"><div class="n">2. Pace</div><h3>Slow, Normal, Fast</h3><p>Fast burns energy and draws more surprises. Slow restores energy but drains budget.</p></div>
-    <div class="beat"><div class="n">3. Decide</div><h3>Cards stop the clock</h3><p>3 or 4 options, each with its own price in energy or budget. Surprise cards arrive too.</p></div>
-    <div class="beat"><div class="n">4. Come due</div><h3>Weeks later</h3><p>"Because you chose…" plus the sign the learner saw on the day they chose.</p></div>
-    <div class="beat"><div class="n">5. Debrief</div><h3>A named ending</h3><p>Every decision replayed, and which prep item would have prevented each bad one.</p></div>
+  <div class="steps">
+    <div class="step"><h3>1. Prepare</h3><p><b>Buy under scarcity.</b> Items give starting energy or budget, block one named future problem, or unlock a better option later.</p></div>
+    <div class="step"><h3>2. Pace</h3><p><b>Slow, Normal, Fast.</b> Fast burns energy and draws more surprises. Slow restores energy but drains budget.</p></div>
+    <div class="step"><h3>3. Decide</h3><p><b>Cards stop the clock.</b> 3 or 4 options, each with its own price in energy or budget. Surprise cards arrive too.</p></div>
+    <div class="step"><h3>4. Come due</h3><p><b>Weeks later.</b> "Because you chose…" plus the sign the learner saw on the day they chose.</p></div>
+    <div class="step"><h3>5. Debrief</h3><p><b>A named ending.</b> Every decision replayed, and which prep item would have prevented each bad one.</p></div>
   </div>
 
   <div class="split">
@@ -332,16 +331,14 @@ dialog#lb p { color: var(--ink); text-align: center; margin: 10px auto 0; }
       <p class="muted">Running either one to zero ends the demo early. Always-fast burns out most runs; always-slow hits a spending freeze. Steering between them is the skill.</p>
     </div>
     <div>
-      <h4>Three sample scenarios</h4>
+      <h4>Sample scenario</h4>
       <div class="tablewrap"><table style="min-width:0">
         <thead><tr><th>Scenario</th><th>For</th></tr></thead>
         <tbody>
           <tr><td><b>The First 90 Days</b><br><span class="muted">90 days, 10 decisions</span></td><td>New managers: listen before acting, delegate, tell leadership the truth early, protect the team without burning out.</td></tr>
-          <tr><td><b>Technical Evaluation Sprint</b><br><span class="muted">15 days, 5 decisions</span></td><td>Pre-sales engineers: confirm the real requirement, test the boundary instead of demoing, hand off with evidence.</td></tr>
-          <tr><td><b>Atlas Relay Evaluation</b><br><span class="muted">90 days, 6 decisions</span></td><td>Customer-facing engineers in a product trial: keep acceptance to what's supported, don't hide a failure behind a manual step.</td></tr>
         </tbody>
       </table></div>
-      <p class="muted">Each scenario renames the resources to fit. The sales sprint uses specialist time and customer access.</p>
+      <p class="muted">Each scenario renames the resources to fit what the learner is managing.</p>
     </div>
   </div>
 
@@ -371,18 +368,19 @@ dialog#lb p { color: var(--ink); text-align: center; margin: 10px auto 0; }
 <section id="ship"><div class="wrap">
   <div class="grad-bar"></div>
   <h2>From an idea to a course in the LMS</h2>
-  <p class="lede">Nobody edits code. You describe the training to Claude Code, opened in the LXG project, and it writes the scenario, checks it, and packages it.</p>
+  <p class="lede">Nobody edits code. You describe the training to Claude Code, opened in the LXG project. Claude picks the format and writes the scenario from its pre-built pieces, and you say yes at each step before it moves on.</p>
   <div class="flow">
-    <div class="node"><b>1. Ask</b><span>"Make a game about returns fraud for store managers." For the RPG, type <b>/rpg</b>; for Booth, <b>/booth</b>.</span></div>
-    <div class="node"><b>2. Answer questions</b><span>Claude asks who the learner is, what good looks like and which mistakes are common.</span></div>
-    <div class="node"><b>3. Claude builds it</b><span>It writes the people, evidence, choices and endings, then runs the format's check.</span></div>
-    <div class="node"><b>4. Play and adjust</b><span>Play it in the browser. Ask for changes in plain words: "make Dan pushier."</span></div>
-    <div class="node"><b>5. Upload</b><span>Ask for the SCORM package and upload the zip to the LMS.</span></div>
+    <div class="node"><b>1. Describe it</b><span>Who plays it, what they should be able to do after, and what people get wrong today. Add the source material.</span></div>
+    <div class="node"><b>2. Objectives</b><span>Each one is an action you could watch the learner take in the game.</span></div>
+    <div class="node"><b>3. Pick the format</b><span>Claude recommends the one that fits, says what it can't show and names the runner-up.</span></div>
+    <div class="node"><b>4. Design on paper</b><span>The evidence and right call for each decision. The wrong options are the real mistakes.</span></div>
+    <div class="node"><b>5. Build and check</b><span>The check opens the game in a browser and plays it through, the way a learner in the LMS would.</span></div>
+    <div class="node"><b>6. Play and upload</b><span>Ask for changes in plain words: "make Dan pushier." Then upload the SCORM zip.</span></div>
   </div>
   <div class="grid g3" style="margin-top:22px">
-    <div class="card"><h3>Three skills do the work</h3><p>The <b>rpg</b> skill walks through designing an RPG scenario, and the <b>booth</b> skill does the same for a Booth desk. The <b>make-scenario</b> skill starts it all: ask Claude to "make a scenario about" something, and it takes your learning objectives, recommends a format and builds the scenario.</p></div>
-    <div class="card"><h3>What the LMS gets</h3><p>A score, completion and pass or fail. Most formats also save progress so a learner can leave and come back.</p></div>
-    <div class="card"><h3>No internet, no live AI</h3><p>Every picture, font and sound is inside the zip. Everything a learner reads was written and checked before publishing; nothing is generated while they play.</p></div>
+    <div class="card"><h3>Three skills do the work</h3><p>Ask Claude to "make a scenario about" something and the <b>make-scenario</b> skill runs these steps. For an RPG or a Booth desk it hands the design to the <b>rpg</b> or <b>booth</b> skill, which know those formats in depth.</p></div>
+    <div class="card"><h3>What the LMS gets</h3><p>A score, completion, pass or fail, and a record of each choice the learner made. Most formats also save progress so a learner can leave and come back.</p></div>
+    <div class="card"><h3>Nothing is generated while they play</h3><p>Every picture, character and sound comes from the format's own library. Everything a learner reads was written and checked before it was published.</p></div>
   </div>
 </div></section>
 <section id="play"><div class="wrap">
@@ -419,7 +417,7 @@ const FORMATS = [
   ['sorting-triage', 'Sorting / Triage', 'judge', '2D', 'Works a live queue of tickets or requests, giving each the right priority before its timer runs out.',
     'Every item has a countdown. Left too long, it turns red, escalates and sends an angry follow-up. Partway through, new information changes the right answer for an item already handled, so the learner has to reopen it. The report counts right calls, escalations and items handled out of urgency order.',
     ['IT and customer support ticket priority', 'Clinic intake: who is seen first when a lab result arrives', 'Refund, complaint and fraud calls competing for attention'],
-    ['IT helpdesk: Monday morning queue (8 tickets drawn from 14).', 'Atlas Relay and Beacon Relay release desks: label product claims as a release changes the facts.', 'Release inbox: route 8 customer requests after a release.'], ['play', 'result'], ''],
+    ['IT helpdesk: Monday morning queue (8 tickets drawn from 14).'], ['play', 'result'], ''],
   ['rail-yard', 'The Rail Yard', 'plan', '3D', 'Builds a timetable to move security rules to a new system before the old one switches off, then watches 14 weeks of attacks.',
     'Each train is a family of rules. Orange cars are weeks of rebuilding, white cars are weeks comparing the new rules with the old system, and a steel frame marks the switch-off week. Only two families can be worked at once. The lever runs the weeks and each attack rolls in caught or missed, with the reason.',
     ['Migrating rules, reports or data before a hard end date', 'Moving clinical alerts to a new records system', 'Switching store software location by location before a contract ends'],
@@ -440,10 +438,10 @@ const FORMATS = [
     'A boiler-room wall of eight pipes, one per data source, each with a wheel and five settings from Full to Drop. Round 1: mark which outputs the customer\'s own plan will break, from what each output reads, then run it. Round 2: six changes, tested only when submitted. The wall lights each output as working or broken, with the reason.',
     ['Trimming data volume without blinding detection rules', 'Which sensor readings to sample or drop without breaking quality alarms', 'Cutting log storage while keeping an audit trail'],
     ['A customer must index 30 percent less data: eight sources, seven outputs.'], ['play', 'result'], ''],
-  ['scale', 'The Scale', 'case', '3D', 'Chooses up to five things for a head-to-head test, knowing the customer walks away from anything that sounds like your own sales sheet.',
-    'A brass balance. The customer\'s stated needs hang on one pan. Each candidate test says what it measures; the learner calls how one-sided it will sound before placing it, and finds out when it lands. A credibility dial swings as choices lean on your own material. On lock, anything past the line is struck off, then each criterion is weighed and lands on the winner\'s pan.',
-    ['Setting evaluation criteria that favor you without looking rigged', 'Proposing a supplier scorecard', 'Proposing success measures for a system pilot'],
-    ['Two vendors bidding to a regional bank.'], ['play', 'result'], ''],
+  ['scale', 'The Scale', 'case', '3D', 'Wins a client meeting against one rival by using the features that meet more of each need\'s requirements, and leaving out the ones nobody asked for.',
+    'A hanging balance on green baize. A briefing memo sets up the deal, then the meeting notes give what each of the client\'s people said they need, in their own words. The rival\'s features stand on the left pan. The learner reads each feature\'s card, uses a set number of them on the right pan and clicks Present. The committee checks one need at a time: the side that meets more of its requirements keeps its weight, the other side\'s slides off, and a feature nobody asked for comes off too. The heavier pan wins. A deal can also run up to four meetings, where winning a need brings a new rival feature to the next one.',
+    ['Matching features to what a client asked for', 'Answering a rival\'s pitch need by need', 'Leaving out a real strength the client didn\'t ask for'],
+    ['Calder County: a county that failed its security audit, one meeting with five needs and three places.'], ['play', 'result'], ''],
   ['pit-lane', 'The Pit Lane', 'case', '3D', 'Races a sales team\'s car through four steps of a deal, deciding before each lap who brings what the buyer is hinting at.',
     'Each lap is a step: discovery, the demo, proof of value, procurement. Before each, someone at the customer says what\'s on their mind without naming what they need. Parts the step needed make the car faster, missing ones slow it, and extra ones only add pit time while rivals pass.',
     ['What each stakeholder really needs at each stage of a deal', 'What to bring to each gate of a purchasing committee', 'A renewal where the real objection is never said'],
@@ -467,15 +465,19 @@ const FORMATS = [
   ['fake-os', 'Fake OS', 'case', '2D', 'Reads records and messages in windows on a pretend desktop, then writes a short handoff from pre-written statements with a strict line limit.',
     'The whole screen is a desktop with a clock, windows, a dock and notifications that count as missed if ignored. Every line included means one left out, and each claim can carry evidence from a record. The handoff is scored on key facts included, the hidden risk caught and lines wasted.',
     ['Pre-sales handoffs backed by evidence', 'Nurse shift handover', 'On-call and shift-change handovers'],
-    ['Atlas Relay and Beacon Relay qualification desks.', 'Inherited evaluation.', 'Workstation: a duty-desk handover.'], ['play', 'result'], '?scenario=sales'],
+    ['Workstation: a duty-desk handover.'], ['play', 'result'], ''],
+  ['objection', 'Objection', 'case', '2D', 'Cross-examines a rival\'s seller on the witness stand: proves the false claims about Splunk wrong with the right document, and shows where Splunk fits this buyer better on the true ones.',
+    'Staged like an Ace Attorney courtroom and drawn as an anime visual novel. A case screen sets out the buyer, the two sides and what is at stake, and the case file holds the documents. The rival\'s seller makes one statement at a time. The learner can Question it for a detail, Challenge it with the document that proves it wrong, Compare it with the document that shows Splunk fits this buyer better, or leave alone a true one about something this buyer doesn\'t need. Every mistake says whether the button or the document was wrong, and the sixth in a testimony loses the buyer. The answer sheet gives every statement, what is true in it, the answer and the proof.',
+    ['Answering a rival\'s claims about your product', 'Telling a false claim from an outdated or partly true one', 'Knowing when a true claim needs no answer for this buyer'],
+    ['Ferrous Steel Works: a steel maker choosing a security platform, one testimony of ten statements.', 'Hollis Valley Health: four hospitals, three testimonies on three topics.'], ['play', 'result'], ''],
+  ['lost-deal', 'The Lost Deal', 'cause', '2D', 'Takes over an account Splunk lost to a rival and walks back through its meetings, last one first, to find the first meeting where Splunk led with the wrong product.',
+    'Each meeting is a two-color dithered scene in the style of Return of the Obra Dinn. The learner clicks people, screens, papers and boards to read them, and some point back to an earlier meeting and add it to the timeline. A notebook has a page per meeting with four blanks: the Splunk product led with, the rival product it was up against (picking both shows the battlecard lines), what went wrong, and the evidence. Checking the notebook says how many pages are right, never which. Then the learner picks the meeting with the first positioning mistake. The ending replays it the right way, shows the buyer\'s own words, and sets a won deal beside it.',
+    ['Which product to lead with against which rival product', 'Win-loss reviews: where a lost deal really went wrong', 'Reading slides, emails and whiteboards as evidence'],
+    ['Halden Freight: a freight company that chose the rival after four meetings.'], ['play', 'result'], ''],
 ];
 const PLAY = [
   ['rpg', 'RPG', [
-    ['Live reports stopped updating at 2 a.m.', '', 'Demo'],
-    ['Discovery: Harbor Lane Insurance', '', 'Security', 'discovery-security/index.html'],
-    ['Redwood Fashion: first visit', '', 'Observability', 'discovery-observability/index.html'],
-    ['The bill keeps going up', '', 'Platform', 'discovery-platform/index.html'],
-    ['How the RPG format works', '', 'Overview', 'overview/index.html']]],
+    ['Agent Observability: Discovery', '', 'AI agents', 'agent-o11y-discovery/index.html']]],
   ['booth', 'Booth', [
     ['Deal desk', '', ''],
     ['Discovery review', '?scenario=discovery-review', '']]],
@@ -495,31 +497,31 @@ const PLAY = [
   ['node-graph', 'Node Graph', [
     ['The checkout slowdown', '', '']]],
   ['journey-v3', 'Journey', [
-    ['The First 90 Days', '', ''],
-    ['Technical Evaluation Sprint', '?scenario=sales', ''],
-    ['Atlas Relay Evaluation', '?scenario=release', '']]],
+    ['The First 90 Days', '', '']]],
   ['sorting-triage', 'Sorting / Triage', [
-    ['IT helpdesk: Monday morning queue', '', ''],
-    ['Atlas Relay release desk', '?scenario=sales', ''],
-    ['Beacon Relay release desk', '?scenario=sales&variant=atlas-release-retry-b', 'Retry'],
-    ['Release inbox', '?scenario=release', '']]],
+    ['IT helpdesk: Monday morning queue', '', '']]],
   ['fake-os', 'Fake OS', [
-    ['Workstation', '', 'Greybox'],
-    ['Atlas Relay qualification desk', '?scenario=sales', ''],
-    ['Beacon Relay qualification desk', '?scenario=sales&variant=atlas-retry-b', 'Retry'],
-    ['Inherited evaluation', '?scenario=release', '']]],
+    ['Workstation: duty desk', '', '']]],
   ['marker-board', 'The Marker Board', [
     ['Platform data path', '', ''],
     ['Telemetry collector', '?scenario=telemetry-collector', ''],
     ['Bank boundaries', '?scenario=bank-boundaries', '']]],
-  ['scale', 'The Scale', [['The Scale', '', '']]],
+  ['objection', 'Objection', [
+    ['Ferrous Steel Works', '', 'Short'],
+    ['Hollis Valley Health', '?scenario=hollis-health', 'Long']]],
+  ['lost-deal', 'The Lost Deal', [['Halden Freight', '', '']]],
+  ['scale', 'The Scale', [['Calder County: the audit meeting', '', '']]],
   ['valve-room', 'The Valve Room', [['The Valve Room', '', '']]],
   ['gauge-wall', 'The Gauge Wall', [['The Gauge Wall', '', '']]],
   ['rail-yard', 'The Rail Yard', [['The Rail Yard', '', '']]],
   ['pit-lane', 'The Pit Lane', [['The Pit Lane', '', '']]],
   ['pyramid', 'The Pyramid', [['Larkspur Systems', '', '']]],
-  ['the-cut', 'The Trial Plan', [['Harbor Financial trial plan', '', '']]],
-  ['the-call', 'Hold the Room', [['Harbor Retail: security review', '', '']]]
+  ['the-cut', 'The Trial Plan', [
+    ['Harbor Financial trial plan', '', ''],
+    ['Apex Health trial plan', '?scenario=apex-health', '']]],
+  ['the-call', 'Hold the Room', [
+    ['Harbor Retail: security review', '', ''],
+    ['Meridian Bank: payments review', '?scenario=meridian-bank', '']]]
 ];
 const playLinks = (id) => (PLAY.find((e) => e[0] === id) || [, , []])[2].map(([t, q, note, page]) =>
   `<a href="${SITE}${id}/${page || 'index.html'}${q}"><span>${esc(t)}</span><small>${esc(note)}</small></a>`).join('');

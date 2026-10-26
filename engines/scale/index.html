@@ -2,217 +2,278 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>
+/* Load guard. A busy local server (python3 -m http.server answers 5 connections at a time) can drop a request while
+   the page loads. A dropped script, module or stylesheet leaves the page dead behind its loading screen, and only a
+   reload brings it back, so reload by itself, a little later each time: at most 4 times in a row, then say so on the page.
+   window.__loadRetry(what) does the same for a failed import(); it returns true when the page is reloading. */
+(function(){var k='load-retry:'+location.pathname,n=0,s,busy=0;try{s=sessionStorage;n=+s.getItem(k)||0}catch(_){}
+var retry=window.__loadRetry=function(what){if(busy)return true;busy=1;
+if(s&&n<4){s.setItem(k,n+1);setTimeout(function(){location.reload()},300*(n+1));return true}
+console.error('[load] '+what+' did not load. Reload the page.');var d=document.createElement('div');d.setAttribute('role','alert');
+d.textContent='Part of this page did not load. Reload the page.';d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:12px;background:#fff;color:#111;font:600 16px/1.3 system-ui,sans-serif;text-align:center';
+(document.body||document.documentElement).appendChild(d);try{s&&s.removeItem(k)}catch(_){}return false};
+addEventListener('error',function(e){var t=e.target;if(t&&(t.tagName==='SCRIPT'||t.tagName==='LINK'&&/stylesheet|modulepreload/.test(t.rel)))retry(t.src||t.href||'a script')},true);
+addEventListener('load',function(){setTimeout(function(){try{busy||s&&s.removeItem(k)}catch(_){}},5000)})})();
+</script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>The Scale</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='14'%3E%E2%9A%96%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 2v11M3.5 14h9M2 4.5h12' stroke='%23C99A4B' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3Cpath d='M2 5 0.5 9h3zM14 5l-1.5 4h3z' fill='%23C99A4B'/%3E%3C/svg%3E">
 <style>
   /* Fonts ship in the package (SIL OFL). No network at play time. */
   @font-face{font-family:"Cinzel";src:url(./assets/fonts/Cinzel_600.woff2) format("woff2");font-weight:600}
   @font-face{font-family:"Crimson Pro";src:url(./assets/fonts/Crimson-Pro_400.woff2) format("woff2");font-weight:400 600}
-  :root{ --cream:#EFE3C6; --brass:#C99A4B; --red:#8E2018; --green:#2C4A32; --ink:#181410; --ui:1 }
+  /* One type scale, in rem so it grows with --ui on big screens: 2 titles, 1.375 headings, 1.0625 body and controls.
+     Three text colors: cream, muted, and ink on brass. The names on the weights all share one
+     size, --wf, which the camera sets so a name always fills the same share of its weight. */
+  :root{ --paper:#EEE4CC; --rule:#CDBD98; --cream:#EFE3C6; --muted:#C2B89F; --ink:#181410; --brass:#C99A4B; --brass-hi:#E6C47E; --brass-lo:#B98A40; --brass-edge:#5F4415;
+    --red:#8E2018; --bg:#0A0907; --panel:#1B1814; --line:#3C352B; --line-hi:#5A4D3A; --ring:#F3D58F; --ui:1; --wf:15px }
+  html{font-size:calc(16px * var(--ui))}
   *{margin:0;padding:0;box-sizing:border-box}
-  html,body{width:100%;height:100%;overflow:hidden;background:#0a0907;color:var(--cream);
-    font-family:"Crimson Pro",Georgia,serif;font-weight:400;-webkit-font-smoothing:antialiased;user-select:none}
-  #app{position:fixed;inset:0}
-  canvas{display:block}
-  .cin{font-family:"Cinzel",Georgia,serif;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
-  b{font-weight:600}
+  html,body{width:100%;height:100%;background:var(--bg)}
+  body{overflow:auto;color:var(--cream);font-family:"Crimson Pro",Georgia,serif;font-weight:400;font-size:1.0625rem;line-height:1.45;-webkit-font-smoothing:antialiased}
+  ::selection{background:#6b5226;color:var(--cream)}
+  :focus-visible{outline:3px solid var(--ring);outline-offset:3px}
+  body.mouse :focus-visible{outline:none}
+  [tabindex="-1"]:focus{outline:none}
+  b,strong{font-weight:600}
+  .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-  /* projected world labels: every label sits on a dark plate */
-  #labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
-  .lbl{position:absolute;transform:translate(-50%,-50%) scale(var(--ui));white-space:nowrap;
-    font-size:14px;color:#F6EEDC;background:rgba(13,11,9,.93);padding:3px 10px;border:1px solid #4a4238;
-    box-shadow:0 2px 6px rgba(0,0,0,.6)}
-  .lbl.small{font-size:12px}
-  button.lbl{cursor:pointer;pointer-events:auto;font-family:inherit}
-  button.lbl:hover{background:#2c2419}
-  button.lbl:focus-visible{outline:3px solid #7FD4FF;outline-offset:2px}
-  button.lbl:not(:disabled)::after{content:" \25B8";opacity:.7}
-  #sr{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  /* the stage: below 1168x657 the page scrolls, so the names on the weights never drop under 13px */
+  #stage{position:relative;width:100%;height:100%;min-width:1168px;min-height:657px;overflow:hidden;user-select:none}
+  #app,#app canvas{position:absolute;left:0;top:0;display:block}
 
-  /* the two card racks, projected onto the table apron */
-  .deck{position:absolute;transform:translate(-50%,-50%) scale(var(--ui));pointer-events:auto;
-    background:linear-gradient(180deg,#1e1b16,#100e0b);border:1px solid #4a4238;padding:5px 6px 6px;
-    box-shadow:inset 0 0 0 2px #0a0a0a,0 4px 10px rgba(0,0,0,.7)}
-  .deck h3{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:12px;letter-spacing:.18em;text-transform:uppercase;
-    color:#B7A98C;margin:0 0 5px;text-align:center}
-  .deck .grid{display:grid;gap:3px}
-  .deck.two .grid{grid-template-columns:1fr 1fr}
-  .deck button{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:12px;letter-spacing:.05em;text-transform:uppercase;
-    padding:4px 5px;border:1px solid #3d372e;background:#26221b;color:#DFD3B6;cursor:pointer;border-radius:2px;
-    text-align:left;white-space:nowrap;position:relative}
-  .deck button:hover{background:#3a3227;color:#fff}
-  .deck button:focus-visible{outline:3px solid #7FD4FF;outline-offset:1px;z-index:1}
-  .deck button[data-on="1"]{background:linear-gradient(180deg,#e3bf74,#a97c33);color:#1e1405;border-color:#5c4110}
-  .deck button[data-on="1"]::after{content:" \2713"}
-  .deck button[data-on="2"]{background:#3a1210;color:#FFC9C2;border-color:#7a2a20;text-decoration:line-through}
-  .deck button:disabled{opacity:.5;cursor:default}
-  .deck .hint{font-size:13px;color:#9a917f;margin-top:5px;text-align:center;font-family:"Crimson Pro",Georgia,serif;letter-spacing:.02em}
+  /* the names on the weights: page text laid over each face, so it stays sharp at any size */
+  #labels{position:absolute;inset:0;z-index:5;pointer-events:none}
+  .wb{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;text-align:center;padding:0;border:0;
+    border-radius:.25em;background:transparent;cursor:pointer;font:600 var(--wf)/1.15 "Crimson Pro",Georgia,serif;color:var(--cream);
+    white-space:nowrap;transition:box-shadow .12s}
+  .wb:hover,.wb.hot{box-shadow:0 0 0 3px var(--brass-hi),0 0 0 5px #241806,0 8px 18px rgba(0,0,0,.6)}
+  .wb[hidden],.new[hidden]{display:none}
+  #labels[inert] .wb{cursor:default;box-shadow:none}
+  /* while the committee weighs, the weights on the need it checks are ringed */
+  #labels[inert] .wb.on{box-shadow:0 0 0 2px var(--brass-hi)}
+  .wb.dim{color:var(--muted)}
+  .new{position:absolute;pointer-events:none;transform:translate(-50%,-50%);padding:0 .45rem;border-radius:.25rem;background:var(--red);
+    color:var(--cream);font-weight:600;line-height:1.45;box-shadow:0 2px 6px rgba(0,0,0,.6)}
 
-  /* diegetic HUD */
-  .plate{position:fixed;z-index:10;padding:10px 16px;
-    background:linear-gradient(180deg,#2a2620,#141210);border:2px solid #4a4238;
-    box-shadow:inset 0 0 0 3px #0c0b0a,inset 0 0 0 4px #5a5246,0 6px 18px rgba(0,0,0,.6);color:var(--cream)}
-  .plate::before,.plate::after{content:"";position:absolute;top:6px;width:6px;height:6px;border-radius:50%;
-    background:radial-gradient(circle at 35% 35%,#8a8a80,#2b2b28);box-shadow:0 1px 0 #000}
-  .plate::before{left:6px}.plate::after{right:6px}
-  #sign{left:50%;transform:translateX(-50%) scale(var(--ui));transform-origin:top center;top:14px;font-size:19px;line-height:1.05;text-align:center}
-  #sign small{display:block;font-size:16px;letter-spacing:.03em;opacity:.92;margin-top:6px;text-transform:none;
-    font-family:"Crimson Pro",Georgia,serif;font-weight:400;line-height:1.4}
-  #status{left:18px;bottom:18px;transform:scale(var(--ui));transform-origin:bottom left;font-size:11px;letter-spacing:.16em;width:320px}
-  #status b{display:block;font-size:26px;line-height:1.05;margin-top:3px;color:var(--brass);font-variant-numeric:tabular-nums;
-    font-family:"Cinzel",Georgia,serif}
-  #status b span{display:inline-block;min-width:3ch;text-align:right}
-  #status b.low{color:#E0533F}
-  #status i{font-style:normal;font-size:16px;opacity:.9;display:block;margin-top:6px;letter-spacing:.1em;
-    font-variant-numeric:tabular-nums;white-space:nowrap;font-family:"Cinzel",Georgia,serif}
-  #status i span{display:inline-block;min-width:1ch;text-align:right;color:var(--brass)}
-  #sound{left:18px;top:18px;z-index:30;cursor:pointer;font-family:inherit;font-size:12px;letter-spacing:.14em;transform:scale(var(--ui));transform-origin:top left}
-  #sound[aria-pressed=false]{opacity:.7}
-  #sound:focus-visible{outline:3px solid #7FD4FF;outline-offset:2px}
-  #lock{position:fixed;right:18px;bottom:18px;z-index:10;cursor:pointer;transform-origin:bottom right;
-    width:210px;height:64px;border:0;border-radius:6px;padding:0 10px;
-    background:linear-gradient(180deg,#d9b56a,#9d7330);
-    box-shadow:inset 0 2px 0 rgba(255,255,255,.35),inset 0 -6px 0 #5f4415,0 8px 0 #2b1f0a,0 12px 20px rgba(0,0,0,.6);
-    color:#2a1d08;font-size:17px;transition:transform .08s,box-shadow .08s;transform:scale(var(--ui))}
-  #lock:active{transform:scale(var(--ui)) translateY(6px);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),inset 0 -2px 0 #5f4415,0 2px 0 #2b1f0a}
-  #lock:disabled{filter:saturate(.3) brightness(.6);cursor:default}
-  #lock:focus-visible{outline:3px solid #7FD4FF;outline-offset:2px}
+  /* plates show; buttons press. A plate is flat, a button is raised and moves under the pointer. */
+  .plate{background:rgba(20,17,13,.94);border:1px solid var(--line);border-radius:.4rem;color:var(--cream)}
+  .btn{font:600 1.0625rem/1.2 "Crimson Pro",Georgia,serif;color:var(--cream);cursor:pointer;padding:.7rem 1.3rem;border-radius:.4rem;
+    border:1px solid var(--line-hi);background:linear-gradient(180deg,#40382d,#29231c);white-space:nowrap;
+    box-shadow:inset 0 1px 0 rgba(255,240,210,.16),0 3px 0 #0e0b08,0 8px 16px rgba(0,0,0,.5);transition:transform .08s,background .15s,box-shadow .08s}
+  .btn:hover{background:linear-gradient(180deg,#52473a,#332b22);transform:translateY(-1px)}
+  .btn:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,240,210,.1),0 1px 0 #0e0b08,0 3px 8px rgba(0,0,0,.5)}
+  .btn.brass{color:var(--ink);border-color:#f0d69a;background:linear-gradient(180deg,var(--brass-hi),var(--brass-lo));
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 4px 0 var(--brass-edge),0 10px 18px rgba(0,0,0,.55)}
+  .btn.brass:hover{background:linear-gradient(180deg,#f2d699,#c89749)}
+  .btn.big{font-size:1.375rem;padding:.8rem 1.8rem}
+  .btn:disabled{cursor:default;transform:none;filter:saturate(.3) brightness(.6)}
 
-  .toast{position:absolute;transform:translate(-50%,-50%) scale(var(--ui));padding:5px 11px;font-size:13px;letter-spacing:.06em;
-    background:rgba(20,17,12,.94);border-left:4px solid var(--brass);color:var(--cream);
-    animation:toast 1.6s ease-out forwards;white-space:nowrap;font-family:"Cinzel",Georgia,serif;font-weight:600;text-transform:uppercase}
-  .toast.bad{border-color:#E0533F}
-  .toast.ok{border-color:#6FD08C}
-  @keyframes toast{0%{opacity:0;transform:translate(-50%,-30%)}12%{opacity:1;transform:translate(-50%,-50%)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-80%)}}
+  /* the corners: sound top left, the meeting notes bottom left, how many are used and Present bottom right */
+  #top{position:absolute;left:1rem;top:1rem;z-index:10}
+  /* the title plate over the scale: the client, then the meeting */
+  #sign{position:absolute;left:50%;top:1rem;transform:translateX(-50%);z-index:9;text-align:center;padding:.55rem 1.6rem;max-width:calc(100% - 20rem)}
+  #signTitle{font-size:1.375rem;font-weight:600;line-height:1.3}
+  #signSub{color:var(--muted);line-height:1.4}
+  #bottom{position:absolute;left:1rem;right:1rem;bottom:1rem;z-index:10;display:flex;gap:.75rem;align-items:flex-end;pointer-events:none}
+  #bottom>*{pointer-events:auto}
+  #bottom.off{visibility:hidden}
+  #status{margin-left:auto;padding:.7rem 1.1rem;color:var(--muted);font-variant-numeric:tabular-nums;line-height:1.2;white-space:nowrap}
+  #status b{color:var(--cream)}
 
-  /* overlays */
-  .ov{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:20px 0;
-    background:radial-gradient(ellipse at center,rgba(10,9,6,.72),rgba(0,0,0,.93));opacity:0;pointer-events:none;transition:opacity .35s}
-  .ov.on{opacity:1;pointer-events:auto}
-  .card{width:min(660px,92vw);padding:32px 38px;background:#1b1814;border:2px solid #3c372f;
-    box-shadow:inset 0 0 0 4px #0d0c0a,inset 0 0 0 5px #5a5246,0 30px 60px #000;color:var(--cream)}
-  .ov .card{max-height:calc(100vh - 40px);overflow:auto}
-  @media (max-height:700px){
-    .ov .card{padding:14px 26px;width:min(900px,94vw)}   /* wider, so the copy needs fewer lines on a short screen */
-    .card h1{font-size:21px}
-    .card h1 small{font-size:10px;margin-bottom:4px}
-    .card p,.card ol,.card ul{line-height:1.35;margin:6px 0}
-    .card .rule{margin:10px 0}
-    .card button{font-size:13px;padding:8px 16px}
-    .quote{padding:9px 13px;margin:8px 0}
-    .spec dt{margin-top:8px}
-  }
-  .card h1{font-size:32px;line-height:1.05;margin-bottom:6px}
-  .card h1 small{display:block;font-size:11px;letter-spacing:.3em;opacity:.55;margin-bottom:9px}
-  .card p{font-size:17px;line-height:1.5;margin:12px 0;color:#E7DCC2}
-  .card ol,.card ul{margin:10px 0 4px 22px;font-size:17px;line-height:1.5;color:#E7DCC2}
-  .card b{color:var(--brass)}
-  .card .rule{border-top:1px dashed #4a4640;margin:18px 0}
-  .card h2{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:13px;letter-spacing:.2em;text-transform:uppercase;
-    color:var(--brass);margin:18px 0 0}
-  .card button{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:16px;letter-spacing:.06em;text-transform:uppercase;
-    padding:12px 24px;cursor:pointer;border:0;color:#2a1d08;
-    background:linear-gradient(180deg,#d9b56a,#9d7330);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 5px 0 #2b1f0a}
-  .card button:active{transform:translateY(4px);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 1px 0 #2b1f0a}
-  .card button.quiet{background:#3a352c;color:#eee;box-shadow:none}
-  .card button:disabled{filter:saturate(.3) brightness(.7);cursor:default}
-  .card button:focus-visible{outline:3px solid #7FD4FF;outline-offset:2px}
-  table.dbf{width:100%;border-collapse:collapse;font-size:17px;margin:10px 0}
-  table.dbf th{text-align:left;font-family:"Cinzel",Georgia,serif;font-weight:600;letter-spacing:.14em;font-size:12px;
-    text-transform:uppercase;opacity:.7;padding:4px 6px;border-bottom:1px solid #3c3a33}
-  table.dbf td{padding:6px;border-bottom:1px solid #26241f;vertical-align:top;font-variant-numeric:tabular-nums}
-  table.dbf td.st{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-  table.dbf tr.you td{background:rgba(201,154,75,.12)}
-  .ok{color:#6FD08C}.bad{color:#E0533F}.amber{color:#E3BF74}
-  .needs{font-size:17px;color:#C9BFA8;line-height:1.45}
-  .quote{background:#EFE3C6;color:#1a1512;padding:14px 18px;font-size:17px;line-height:1.5;font-style:italic;
-    box-shadow:inset 0 0 0 1px #b9a77a;margin:12px 0}
-  .quote::before{content:"\201C"}.quote::after{content:"\201D"}
-  .spec dt{font-family:"Cinzel",Georgia,serif;font-weight:600;font-size:12px;letter-spacing:.2em;text-transform:uppercase;opacity:.6;margin-top:13px}
-  .spec dd{font-size:17px;line-height:1.45;color:#E7DCC2;margin:2px 0 0}
-  .spec dd.warn{color:#E3BF74}
-  #debrief{position:fixed;top:0;right:0;bottom:0;z-index:20;width:min(520px,94vw);overflow:auto;padding:24px 26px;
-    opacity:0;pointer-events:none;transition:opacity .3s;border-width:0 0 0 2px}
-  #debrief.on{opacity:1;pointer-events:auto}
-  @media (max-height:700px){ #debrief{width:min(440px,42vw);padding:18px 20px} }
-  #debrief h1{font-size:25px}
-  #debrief h2{margin-top:22px;margin-bottom:2px}
-  #debrief p{font-size:17px;margin:10px 0}
-  #debrief table.dbf{margin:6px 0}
-  #debrief button{font-size:14px;padding:9px 16px}
-  #dbShow{position:fixed;right:18px;bottom:18px;z-index:21;transform:scale(var(--ui));transform-origin:bottom right;cursor:pointer;
-    width:210px;height:64px;border:0;border-radius:6px;background:linear-gradient(180deg,#d9b56a,#9d7330);color:#2a1d08;font-size:17px;
-    box-shadow:inset 0 2px 0 rgba(255,255,255,.35),inset 0 -6px 0 #5f4415,0 8px 0 #2b1f0a,0 12px 20px rgba(0,0,0,.6)}
-  #err{position:fixed;left:0;right:0;bottom:0;z-index:99;background:#400;color:#fdd;font:12px monospace;padding:8px;white-space:pre-wrap;display:none}
+  /* the committee's reasons while the scale weighs, docked over the rack */
+  #dock{position:absolute;right:1rem;top:6.5rem;z-index:10;width:25rem;max-height:calc(100% - 7.5rem);overflow:auto;padding:1.1rem 1.4rem 1.3rem;border-radius:.6rem;
+    background:var(--panel);border:1px solid var(--line-hi);box-shadow:0 20px 44px rgba(0,0,0,.65);opacity:0;visibility:hidden;transition:opacity .25s,visibility 0s .25s}
+  #dock.on{opacity:1;visibility:visible;transition:opacity .25s}
+  /* "Need 2 of 5" and Skip share a line; the client's words run the full width under them */
+  .dkHead{display:flex;gap:1rem;align-items:center;justify-content:space-between}
+  #dkPri{color:var(--muted)}
+  #skip{padding:.45rem 1rem;flex:none}
+  #dkTitle{margin-top:.5rem;font-style:italic;font-weight:400;font-size:1.0625rem;line-height:1.45}
+  #dkWho{color:var(--muted);margin-top:.35rem}
+  #dkNote p{margin-top:.6rem}
+  #dkNote .tie{font-weight:600;font-size:1.375rem;color:var(--muted)}
+  .reqs{width:100%;border-collapse:collapse;margin-top:.8rem}
+  .reqs th{font-weight:600;color:var(--muted);padding:0 0 .3rem;text-align:left}
+  .reqs th.ic,.reqs td.ic{width:1%;white-space:nowrap;text-align:center;padding-left:.75rem}
+  .reqs td{padding:.38rem 0;border-top:1px solid var(--line);vertical-align:middle;line-height:1.35}
+  .reqs td.ic svg{display:block;margin:0 auto;width:1.35rem;height:1.35rem}
+  .reqs tfoot th,.reqs tfoot td{border-top:1px solid var(--line-hi);padding-top:.4rem;font-size:1.375rem;font-weight:600;color:var(--cream);font-variant-numeric:tabular-nums}
+  .reqs tfoot th{font-size:1.0625rem}
+
+  /* cards */
+  .ov{position:fixed;inset:0;z-index:20;display:flex;align-items:safe center;justify-content:safe center;padding:1rem;overflow:auto;
+    background:rgba(6,5,4,.8);opacity:0;visibility:hidden;transition:opacity .25s,visibility 0s .25s}
+  .ov.on{opacity:1;visibility:visible;transition:opacity .25s}
+  .card{width:min(var(--cw,40rem),100%);flex:none;padding:1.7rem 2.1rem 1.9rem;border-radius:.7rem;background:var(--panel);border:1px solid var(--line-hi);
+    box-shadow:0 30px 60px rgba(0,0,0,.8)}
+  .card h1{font-size:2rem;font-weight:600;line-height:1.15}
+  .cin{font-family:"Cinzel",Georgia,serif;letter-spacing:.03em}
+  .card h2{font-size:1.375rem;font-weight:600;line-height:1.3;margin-top:1.1rem}
+  .card p{margin-top:.5rem;max-width:68ch}
+  .sub{color:var(--muted)}
+  .row{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:1.4rem}
+  .row .flat{margin:0 0 0 .5rem}
+  .cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 2.4rem}
+  .needs{display:grid;grid-template-columns:repeat(var(--nc,3),minmax(0,1fr));gap:.9rem 1.8rem;margin-top:.9rem}
+  .need{border-top:1px solid var(--line-hi);padding-top:.6rem}
+  .need h2{font-size:1.375rem;font-weight:600;line-height:1.3;margin-top:0}
+  .need .pri{color:var(--muted)}
+  .need .said{margin-top:.4rem;font-style:italic;line-height:1.45}
+  .tally{width:100%;border-collapse:collapse;margin-top:.9rem;font-variant-numeric:tabular-nums}
+  .tally th{font-weight:600;color:var(--muted);text-align:right;padding:0 0 .3rem .9rem;white-space:nowrap}
+  .tally th:first-child{text-align:left;padding-left:0}
+  .tally td{padding:.36rem 0 .36rem .9rem;border-top:1px solid var(--line);text-align:right;white-space:nowrap;line-height:1.35}
+  .tally td:first-child{text-align:left;padding-left:0;white-space:normal}
+  .tally caption{text-align:left;color:var(--muted);padding-bottom:.2rem}
+
+  /* results: the whole screen, nothing of the scale behind it */
+  #results{position:fixed;inset:0;z-index:30;overflow:auto;display:flex;justify-content:safe center;align-items:safe center;padding:1.5rem 2.5rem;
+    background:radial-gradient(ellipse at 50% 0%,#211a12,var(--bg) 70%);opacity:0;visibility:hidden;transition:opacity .4s,visibility 0s .4s}
+  #results.on{opacity:1;visibility:visible;transition:opacity .4s}
+  #results .wrap{width:min(84rem,100%);flex:none}
+  #results h1{font-size:2rem;font-weight:600;line-height:1.15}
+  #rsSub{margin-top:.35rem;color:var(--muted)}
+  /* one column per side: its total over the needs it took; ties and features nobody asked for are muted */
+  .sides{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 4rem;margin-top:1.5rem}
+  .sides .top{display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:.75rem;border-bottom:2px solid var(--brass)}
+  .sides .them .top{border-bottom-color:#6E7C8C}
+  .sides .top b{font-size:1.375rem;line-height:1.3}
+  .sides .n{font-family:"Cinzel",Georgia,serif;font-size:4.5rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;color:var(--brass-hi)}
+  .sides .them .n{color:var(--cream)}
+  .sides ul{list-style:none}
+  .sides li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:0 1.5rem;align-items:baseline;padding:.7rem 0;border-bottom:1px solid var(--line)}
+  .sides li i{grid-column:1/-1;color:var(--muted);margin-top:.15rem;max-width:68ch}
+  .sides .m{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .sides .p{font-weight:600;font-variant-numeric:tabular-nums}
+  .sides li.minus,.sides li.minus .p{color:var(--muted)}
+  #rsFoot{display:flex;gap:2rem;justify-content:space-between;align-items:center;margin-top:1.6rem;padding-top:1.2rem;border-top:1px solid var(--line)}
+  .tabs{display:grid;grid-template-columns:repeat(var(--rc,3),minmax(0,1fr));gap:.6rem;margin-top:1.3rem}
+  .tab{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:.1rem;text-align:left;white-space:normal;padding:.6rem 1rem}
+  .tab span{color:var(--muted);font-weight:400;font-variant-numeric:tabular-nums}
+  .tab[aria-selected="true"]{background:linear-gradient(180deg,#5a4c37,#3b3125);border-color:var(--brass)}
+  .tab[aria-selected="true"] span{color:var(--cream)}
+  .tab[aria-selected="true"]::after{content:"";position:absolute;left:.6rem;right:.6rem;bottom:-.55rem;height:3px;border-radius:2px;background:var(--brass-hi)}
+  .tabs+.panel{margin-top:1.2rem}
+  #err{position:fixed;left:0;right:0;bottom:0;z-index:99;background:#400;color:#fdd;font:13px/1.4 monospace;padding:8px;white-space:pre-wrap;display:none}
+  /* a window under the stage's width: the cards read in one column and scroll */
+  @media (max-width:900px){ .cols,.sides{grid-template-columns:minmax(0,1fr)} .log p{grid-template-columns:minmax(0,1fr);gap:0} .cols{row-gap:1rem} .tabs{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media (prefers-reduced-motion:reduce){ .ov,.ov.on,#dock,#dock.on,#results,#results.on{transition:none} .btn{transition:none} }
+  /* the committee goes down the list one requirement at a time: each row lights and its marks pop in */
+  .reqs tbody tr td{opacity:.35;transition:opacity .25s}
+  .reqs tbody tr td.ic svg{transform:scale(0);transition:transform .28s cubic-bezier(.16,1,.3,1)}
+  .reqs tbody tr.on td{opacity:1}
+  .reqs tbody tr.on td.ic svg{transform:scale(1)}
+  .reqs th,.reqs td{transition:opacity .35s,color .35s}
+  /* then the side that meets more lights up, and the other side fades */
+  .reqs.w-us #dkHUs,.reqs.w-us #dkUs,.reqs.w-them #dkHThem,.reqs.w-them #dkThem{color:var(--brass-hi)}
+  .reqs.w-us #dkHThem,.reqs.w-us #dkThem,.reqs.w-them #dkHUs,.reqs.w-them #dkUs{color:var(--muted)}
+  .reqs.w-us tbody td:nth-child(2) svg,.reqs.w-them tbody td:nth-child(3) svg{opacity:.3}
+  .reqs.w-us #dkUs,.reqs.w-them #dkThem{font-size:2rem}
+
+  /* the meeting notes: a typed record on paper */
+  .sheet{width:min(56rem,100%);flex:none;padding:2.4rem 3.4rem 2rem;border-radius:.2rem;background:var(--paper);color:var(--ink);
+    box-shadow:0 18px 40px rgba(0,0,0,.6),0 2px 4px rgba(0,0,0,.4);transform:rotate(-.4deg)}
+  .sheet h1{font-size:2rem;font-weight:600;line-height:1.2}
+  .sheet .meta{margin-top:.25rem}
+  .log{margin-top:1.1rem;border-top:1px solid var(--rule)}
+  .log p{display:grid;grid-template-columns:9rem minmax(0,1fr);gap:1.2rem;padding:.55rem 0;line-height:1.45}
+  .log p b{font-weight:600}
+  .sheet .foot{display:flex;gap:1rem;align-items:center;justify-content:flex-end;margin-top:.9rem;padding-top:.9rem;border-top:1px solid var(--rule)}
+  .sheet .foot p{margin-right:auto}
+  .sheet ::selection{background:#d9c08a;color:var(--ink)}
+
+  /* the weight card and the confirm card */
+  #icTitle,#cfTitle,#howTitle{font-size:1.375rem;line-height:1.3}
+  /* the briefing memo: the same paper as the meeting notes */
+  .memo{width:min(42rem,100%)}
+  .memo .hdr{padding-bottom:.9rem;margin-bottom:1.4rem;border-bottom:1px solid var(--rule)}
+  .memo .hdr p{display:grid;grid-template-columns:5rem minmax(0,1fr);padding:.1rem 0}
+  .memo #inBody p{margin-top:.75rem;max-width:36rem}
+  .memo .foot{margin-top:1.6rem}
+  #howList{list-style:none;margin-top:.75rem}
+  #howList li{padding:.5rem 0;border-top:1px solid var(--line)}
+  #cfList{list-style:none;margin-top:.75rem}
+  #cfList li{padding:.5rem 0;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
-<div id="app"></div>
-<div id="labels"></div>
-
-<div class="plate cin" id="sign">The Scale<small id="signsub">Click a criterion to read it.</small></div>
-<div id="sr" role="status" aria-live="polite"></div>
-<div class="plate cin" id="status">Credibility<b id="stCred"><span>100</span> / 100</b><i>On your pan <span id="stCount">0</span> / <span id="stMax">5</span></i></div>
-<button id="lock" class="cin" disabled>Lock scorecard</button>
-<button id="sound" class="plate cin" type="button">Sound on</button>
-
-<div class="ov on" id="intro"><div class="card">
-  <h1 class="cin"><small>Set the test before the bake-off</small>The Scale</h1>
-  <h2>The situation</h2>
-  <p id="introSituation"></p>
-  <h2>Your goal</h2>
-  <p id="introGoal"></p>
-  <h2>What to do</h2>
-  <ol id="introSteps"></ol>
-  <div class="rule"></div>
-  <button id="start" class="cin">Start</button>
-</div></div>
-
-<div class="ov" id="crit"><div class="card" style="width:min(600px,92vw)" role="dialog" aria-labelledby="critTitle">
-  <h1 class="cin"><small id="critKind"></small><span id="critTitle"></span></h1>
-  <div id="critQuote"></div>
-  <dl class="spec" id="critBody"></dl>
-  <div class="rule"></div>
-  <div style="display:flex;gap:10px;flex-wrap:wrap">
-    <button id="critPlace" class="cin">Add to pan</button>
-    <button id="critClose" class="cin quiet">Close</button>
+<div id="stage">
+  <div id="app"></div>
+  <header id="top">
+    <button id="sound" class="btn" type="button">Sound on</button>
+  </header>
+  <div id="sign" class="plate"><h1 id="signTitle" tabindex="-1">The Scale</h1><p id="signSub"></p></div>
+  <div id="labels"></div>
+  <div id="bottom">
+    <button id="btnNeeds" class="btn" type="button">Meeting notes</button>
+    <div id="status" class="plate"></div>
+    <button id="weigh" class="btn brass big" type="button" disabled>Present</button>
   </div>
+  <aside id="dock" aria-labelledby="dkTitle">
+    <div class="dkHead"><p id="dkPri"></p><button id="skip" class="btn" type="button">Skip</button></div>
+    <h2 id="dkTitle"></h2>
+    <p id="dkWho"></p>
+    <table class="reqs" id="dkTable"><thead><tr><th scope="col">Requirement</th><th scope="col" class="ic" id="dkHThem"></th><th scope="col" class="ic" id="dkHUs"></th></tr></thead>
+      <tbody id="dkRows"></tbody><tfoot><tr><th scope="row">Meets</th><td class="ic" id="dkThem"></td><td class="ic" id="dkUs"></td></tr></tfoot></table>
+    <div id="dkNote"></div>
+    
+  </aside>
+</div>
+<div id="sr" class="vh" role="status" aria-live="polite"></div>
+
+<div class="ov on" id="intro"><div class="sheet memo" role="dialog" aria-modal="true" aria-labelledby="inTitle">
+  <div class="hdr"><p><b>To</b><span>You</span></p><p><b>From</b><span id="inFrom"></span></p><p><b>About</b><span id="inAbout"></span></p></div>
+  <h1 class="cin" id="inTitle"></h1>
+  <div id="inBody"></div>
+  <div class="foot"><button id="howBtn" class="btn" type="button">How to play</button><button id="start" class="btn brass big" type="button">Go to the meeting</button></div>
 </div></div>
 
-<div class="ov" id="sheet"><div class="card" role="dialog" aria-labelledby="sheetTitle">
-  <h1 class="cin"><small>Bake-off sheet</small><span id="sheetTitle"></span></h1>
-  <p id="sheetLede"></p>
-  <table class="dbf" id="sheetTable"></table>
-  <div class="rule"></div>
-  <button id="sheetClose" class="cin quiet">Close</button>
+<div class="ov" id="how"><div class="card" style="--cw:36rem" role="dialog" aria-modal="true" aria-labelledby="howTitle">
+  <h1 id="howTitle">How to play</h1>
+  <ul id="howList"></ul>
+  <div class="row"><button class="btn" type="button" data-close>Close</button></div>
 </div></div>
 
-<div class="ov" id="confirm"><div class="card" style="width:min(560px,92vw)" role="dialog" aria-labelledby="cfTitle">
-  <h1 class="cin"><span id="cfTitle">Lock scorecard?</span></h1>
-  <table class="dbf" id="cfBody"></table>
-  <p>You cannot undo this.</p>
-  <div class="rule"></div>
-  <div style="display:flex;gap:10px"><button id="cfYes" class="cin">Lock scorecard</button><button id="cfNo" class="cin quiet">Go back</button></div>
+<div class="ov" id="needsCard"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ndTitle">
+  <h1 class="cin" id="ndTitle"></h1>
+  <p class="meta" id="ndSub"></p>
+  <div class="log" id="ndLog"></div>
+  <div class="foot"><p id="ndNew"></p><button id="ndGo" class="btn" type="button"></button></div>
 </div></div>
 
-<aside id="debrief" class="card" aria-label="Bake-off results" tabindex="-1">
-  <h1 class="cin"><small>Results</small><span id="dbTitle"></span></h1>
-  <table class="dbf" id="dbSummary"></table>
-  <p id="dbLook"></p>
-  <h2>Each criterion</h2>
-  <table class="dbf" id="dbRows"></table>
-  <h2 id="dbStruckH" hidden>Struck</h2>
-  <table class="dbf" id="dbStruck" hidden></table>
-  <h2>What to say about yours</h2>
-  <table class="dbf" id="dbSay"></table>
-  <h2>Best scorecard</h2>
-  <table class="dbf" id="dbBest"></table>
-  <div class="rule"></div>
-  <button id="dbHide" class="cin quiet">Hide results</button>
-  <button id="startOver" class="cin quiet">Start over</button>
-</aside>
-<button id="dbShow" class="cin" hidden>Show results</button>
+<div class="ov" id="itemCard"><div class="card" style="--cw:36rem" role="dialog" aria-modal="true" aria-labelledby="icTitle">
+  <h1 id="icTitle"></h1>
+  <p class="sub" id="icFrom"></p>
+  <p id="icDoes"></p>
+  <p class="sub" id="icNew"></p>
+  <div class="row"><button id="icAct" class="btn brass" type="button"></button><button class="btn" type="button" data-close>Close</button><span class="sub" id="icFull"></span></div>
+</div></div>
+
+<div class="ov" id="confirm"><div class="card" style="--cw:34rem" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
+  <h1 id="cfTitle"></h1>
+  <ul id="cfList"></ul>
+  <p class="sub" id="cfBody"></p>
+  <div class="row"><button id="cfYes" class="btn brass" type="button">Present</button><button id="cfNo" class="btn" type="button">Back</button></div>
+</div></div>
+
+<div class="ov" id="summary"><div class="card" style="--cw:44rem" role="dialog" aria-modal="true" aria-labelledby="smTitle">
+  <h1 class="cin" id="smTitle"></h1>
+  <p id="smScore"></p>
+  <table class="tally" id="smTable"></table>
+  <div id="smNotes"></div>
+  <p id="smDeal"></p>
+  <div class="row"><button id="smGo" class="btn brass big" type="button"></button></div>
+</div></div>
+
+<section id="results" aria-labelledby="rsTitle"><div class="wrap">
+  <h1 class="cin" id="rsTitle" tabindex="-1"></h1>
+  <p id="rsSub"></p>
+  <div class="tabs" role="tablist" id="rsTabs" aria-label="Meetings"></div>
+  <div class="panel" id="rsPanel" role="tabpanel" tabindex="0"></div>
+  <div id="rsFoot"><p id="rsPicks"></p><button id="startOver" class="btn" type="button">Start over</button></div>
+</div></section>
 <div id="err"></div>
 
 <script type="importmap">
@@ -226,114 +287,86 @@
 <script type="module">
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { connectScorm } from 'scorm';
 import { createAudio } from './assets/audio/audio.js';
 import defaultContent from './content.js';
 import { validatePack } from './validate-pack.mjs';
+import { makeScoring, nameLines, NAME_FIT } from './scoring.mjs';
 
-window.addEventListener('error', e=>{ const el=document.getElementById('err'); el.style.display='block';
-  el.textContent += '\n' + (e.error?.stack || e.message); });
+const $ = id => document.getElementById(id);
+window.addEventListener('error', e=>{ const el=$('err'); el.style.display='block'; el.textContent += '\n' + (e.error?.stack || e.message); });
 
 /*═══════════════════════════════════════════════════════════════════════════
-  CONTENT PACK — the only place a product, a vendor or a person is named.
-  Engine, HUD and mechanics are generic. Default lives in ./content.js;
-  content-packs/scale/*.json swap in via window.__ENGINE_CONTENT__.
-
-  Every criterion carries three numbers:
-    w      how much the criterion counts in the bake-off (1 light, 3 heavy)
-    bias   how much it reads like the seller's own material (0 none, 3 blatant)
-    takes  who wins it when it is scored: 'us', 'them' or 'split'
+  CONTENT PACK — the only place a product, a vendor or a client is named.
+  Default lives in ./content.js; content-packs/scale/*.json swap in via
+  window.__ENGINE_CONTENT__. See README.md for the contract.
+    rounds[]  one per meeting: its needs, the rival's features on the scale,
+              and the rack of features the learner uses
 ═══════════════════════════════════════════════════════════════════════════*/
 const CONTENT = window.__ENGINE_CONTENT__ ?? defaultContent;
 {
   const problems = validatePack(CONTENT);
   if (problems.length) {
-    const el = document.getElementById('err');
-    el.style.display = 'block';
+    const el = $('err'); el.style.display = 'block';
     el.textContent = 'Content pack failed validation:\n' + problems.map(p => '- ' + p).join('\n');
     throw new Error('Invalid content pack:\n' + problems.join('\n'));
   }
 }
 
 /*═══════════════════════════════════════════════════════════════════════════
-  THEME — the look (cloth, wood, brass, HUD ink), separate from the pack's
-  facts. Same lookup shape as layers/theme/registry.ts's createThemeRegistry
-  (that file is imported by relative path elsewhere; here it's inlined since a
-  .ts import doesn't run in a plain browser module). No `theme` on the pack
-  means the engine renders pixel-identical to before this seam existed.
+  THEME — the look, separate from the pack's facts. Same lookup shape as
+  layers/theme/registry.ts's createThemeRegistry, inlined for a plain module.
 ═══════════════════════════════════════════════════════════════════════════*/
 const THEME_PACKS = {
   default: {
     colors: {
-      '--cream':'#EFE3C6', '--brass':'#C99A4B', '--red':'#8E2018', '--green':'#2C4A32', '--ink':'#181410',
+      '--cream':'#EFE3C6', '--brass':'#C99A4B', '--red':'#8E2018', '--ink':'#181410',
       baize:'#3E6B47', floor:'#6a6258', brass:'#E2B96C', brassDark:'#8f6a2c',
     },
   },
 };
 function getTheme(packId){
-  const requestedPack = packId || 'default';
-  const theme = THEME_PACKS[requestedPack];
-  if (theme) return { theme, requestedPack, activePack:requestedPack };
-  console.warn(`[scale] pack "${requestedPack}" not available, using "default"`);
-  return { theme:THEME_PACKS.default, requestedPack, activePack:'default' };
+  const theme = THEME_PACKS[packId || 'default'];
+  if (theme) return theme;
+  console.warn(`[scale] pack "${packId}" not available, using "default"`);
+  return THEME_PACKS.default;
 }
-const { theme: THEME } = getTheme(CONTENT.theme?.pack);
-const COLOR = { ...THEME.colors, ...(CONTENT.theme?.colors || {}) };
-for (const k of ['--cream','--brass','--red','--green','--ink']) {
-  document.documentElement.style.setProperty(k, COLOR[k]);
-}
+const COLOR = { ...getTheme(CONTENT.theme?.pack).colors, ...(CONTENT.theme?.colors || {}) };
+for (const k of ['--cream','--brass','--red','--ink']) document.documentElement.style.setProperty(k, COLOR[k]);
 
 /*═══════════════════════════════════════════════════════════════════════════
   MODEL
 ═══════════════════════════════════════════════════════════════════════════*/
-const CRIT = Object.fromEntries([...CONTENT.stated, ...CONTENT.candidates].map(c=>[c.id,c]));
+const US=CONTENT.us.name, THEM=CONTENT.them.name, CLIENT=CONTENT.client, ROUNDS=CONTENT.rounds, N=ROUNDS.length;
+const sc = makeScoring(CONTENT), { ITEM, RIVAL, NEED } = sc;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-function credFor(ids){ return CONTENT.cred.start - ids.reduce((n,id)=>n+CRIT[id].bias*CONTENT.cred.perBias, 0); }
-function struckBy(ids){ const c=credFor(ids); return c<CONTENT.cred.threshold ? ids.filter(id=>CRIT[id].bias>=2) : []; }
-function tally(ids){                        // ids = your placed criteria that survived
-  let us=0, them=0;
-  for(const c of [...CONTENT.stated, ...ids.map(id=>CRIT[id])]){
-    if(c.takes==='us') us+=c.w; else if(c.takes==='them') them+=c.w; else { us+=c.w/2; them+=c.w/2; }
-  }
-  return { us, them };
-}
-function outcome(ids){
-  const cred=credFor(ids), struck=struckBy(ids), live=ids.filter(id=>!struck.includes(id));
-  const t=tally(live);
-  const bake=Math.round(50*clamp(.5+(t.us-t.them)/CONTENT.swing, 0, 1));
-  const credScore=Math.round(50*clamp(cred,0,100)/100);
-  return { cred, struck, live, ...t, bake, credScore, score:bake+credScore };
-}
-// Best scorecard, brute forced over every subset up to the placement cap. 638 combinations.
-const BEST = (()=>{
-  const ids=CONTENT.candidates.map(c=>c.id); let best={ score:-1, set:[] };
-  const walk=(i,set)=>{ const o=outcome(set); if(o.score>best.score) best={ ...o, set:[...set] };
-    if(set.length===CONTENT.maxPlace) return;
-    for(let k=i;k<ids.length;k++){ set.push(ids[k]); walk(k+1,set); set.pop(); } };
-  walk(0,[]); return best;
-})();
+const esc=s=>String(s).replace(/[&<>"]/g, c=>({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const listOf=a=>a.length<3 ? a.join(' and ') : `${a.slice(0,-1).join(', ')} and ${a.at(-1)}`;
 
-/*═══════════════════════════════════════════════════════════════════════════
-  STATE — phase: read -> reveal -> done
-═══════════════════════════════════════════════════════════════════════════*/
-const state = { phase:'read', placed:[], struck:[], finished:false, result:null, restoring:false };
+/* phase: intro -> needs -> play -> weigh -> summary -> needs ... -> done */
+const state = { phase:'intro', round:0, placed:[], picks:[], outcomes:[], won:new Set(), restoring:false, finished:false };
+const shown = { us:0, them:0 };   // the deal so far, for the card between meetings
+
 /*═══════════════════════════════════════════════════════════════════════════
   SOUND — assets/audio/audio.json lists each sound and the moment it fires on
 ═══════════════════════════════════════════════════════════════════════════*/
-const audio = createAudio({ storageKey:'scale.muted',
-  sfx:{ 'card-open':'./assets/audio/card-open.mp3', sheet:'./assets/audio/sheet.mp3', place:'./assets/audio/place.mp3',
-    lock:'./assets/audio/lock.mp3', strike:'./assets/audio/strike.mp3', unroll:'./assets/audio/unroll.mp3',
-    'take-us':'./assets/audio/take-us.mp3', 'take-them':'./assets/audio/take-them.mp3', 'take-even':'./assets/audio/take-even.mp3',
-    'result-won':'./assets/audio/result-won.mp3', 'result-lost':'./assets/audio/result-lost.mp3' } });
-audio.mountToggle(document.getElementById('sound'));
+const SFX=['sting-victory','sting-defeat','card-open','sheet','place','lock','unroll','take-us','take-them','take-even'];
+const audio = createAudio({ storageKey:'scale.muted', sfx:Object.fromEntries(SFX.map(n=>[n,`./assets/audio/${n}.mp3`])),
+  beds:{ music:'./assets/audio/bed-music.mp3' }, gains:{ bed:0.202 } });
+audio.mountToggle($('sound'));
+// a skip runs the clock fast and says nothing; a restored save says nothing either
+const sfx=(name, gain=1)=>{ if(timeScale===1 && !state.restoring) audio.play(name,{ gain }); };
 
 /*═══════════════════════════════════════════════════════════════════════════
   RENDERER, ENVIRONMENT, LIGHT
 ═══════════════════════════════════════════════════════════════════════════*/
-const app = document.getElementById('app');
+await Promise.race([Promise.all(['600 40px Cinzel','600 40px "Crimson Pro"','400 40px "Crimson Pro"'].map(f=>document.fonts.load(f))), new Promise(r=>setTimeout(r,3000))]).catch(()=>{});
+const stage=$('stage'), app=$('app'), labelsEl=$('labels');
+let SW=stage.clientWidth, SH=stage.clientHeight;
 const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
+renderer.setSize(SW, SH);
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -341,48 +374,22 @@ app.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x070605);
-scene.fog = new THREE.Fog(0x070605, 14, 26);
+scene.fog = new THREE.Fog(0x070605, 22, 38);
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture;
 scene.environmentIntensity = .38;
 
-const LOOK = new THREE.Vector3(-0.7, 1.55, 0);
-const camera = new THREE.PerspectiveCamera(34, innerWidth/innerHeight, .1, 60);
-camera.position.set(LOOK.x, 3.8, 10.7);
-camera.lookAt(LOOK);
-function panelInset(){ const db=document.getElementById('debrief');
-  return db && db.classList.contains('on') ? db.getBoundingClientRect().width : 0; }
-function fitCamera(){
-  // The debrief is docked over the right of the canvas, so the world has to fit the strip that is left.
-  const dist=11.0, needH=6.0, needW=15.2;
-  const inset=Math.min(panelInset(), innerWidth*.6), S=innerWidth-inset, F=innerWidth+inset;
-  const fovH=2*Math.atan(needH/2/dist), fovW=2*Math.atan(needW/2/dist/(S/innerHeight));
-  camera.fov=THREE.MathUtils.radToDeg(Math.max(fovH,fovW)); camera.aspect=F/innerHeight; camera.updateProjectionMatrix();
-  if(inset) camera.setViewOffset(F, innerHeight, inset, 0, innerWidth, innerHeight); else camera.clearViewOffset();
-  const ref=2*Math.tan(THREE.MathUtils.degToRad(34)/2)*dist, cur=2*Math.tan(THREE.MathUtils.degToRad(camera.fov)/2)*dist;
-  document.documentElement.style.setProperty('--ui', Math.max(.55, Math.min(1, (innerHeight/900)*(ref/cur))).toFixed(3));
-}
-fitCamera();
-
 scene.add(new THREE.AmbientLight(0x3a3630, .55));
-function deskLamp(x,y,z,color=0xffd39a,i=30,fixture=true){
-  const L=new THREE.SpotLight(color, i, 22, Math.PI/3.2, .55, 1.5);
-  L.position.set(x,y,z); L.target.position.set(x*.72, .6, 0); L.castShadow=true;
+function lamp(x,y,z, tx,ty,tz, i){
+  const L=new THREE.SpotLight(0xffd39a, i, 24, Math.PI/3.4, .6, 1.5);
+  L.position.set(x,y,z); L.target.position.set(tx,ty,tz); L.castShadow=true;
   L.shadow.mapSize.set(2048,2048); L.shadow.bias=-.0006; L.shadow.normalBias=.02;
   scene.add(L, L.target);
-  if(!fixture) return L;
-  const g=new THREE.Group(); g.position.set(x,y,z);
-  g.add(new THREE.Mesh(new THREE.ConeGeometry(.42,.4,24,1,true), new THREE.MeshStandardMaterial({color:0x3b2f20, metalness:.85, roughness:.4, side:THREE.DoubleSide})));
-  const brim=new THREE.Mesh(new THREE.TorusGeometry(.42,.022,8,28), new THREE.MeshStandardMaterial({color:0xC99A4B, metalness:.95, roughness:.3})); brim.rotation.x=Math.PI/2; brim.position.y=-.2; g.add(brim);
-  const bulb=new THREE.Mesh(new THREE.SphereGeometry(.07,16,12), new THREE.MeshBasicMaterial({color})); bulb.position.y=-.13; g.add(bulb);
-  g.add(new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,3.0,6), new THREE.MeshStandardMaterial({color:0x131110, metalness:.9, roughness:.4})).translateY(1.6));
-  scene.add(g); return L;
 }
-deskLamp(-3.6, 5.05, 2.7); deskLamp(3.6, 5.05, 2.7);
-deskLamp(-6.0, 5.6, 2.6, 0xffd39a, 20, false); deskLamp(5.4, 5.4, 2.8, 0xffd39a, 22, false);
-const fill = new THREE.DirectionalLight(0xaebbd0, .2); fill.position.set(-5, 3, 9); scene.add(fill);
-const floorFill = new THREE.DirectionalLight(0xffd9a8, .5); floorFill.position.set(0, 6, 7); floorFill.target.position.set(0,-3,3); scene.add(floorFill, floorFill.target);
-const redLamp = new THREE.PointLight(0xff2a1a, 0, 8, 2); redLamp.position.set(0, 2.4, 3.0); scene.add(redLamp);
+lamp(-2.6, 6.6, 3.6, -1.9, .8, 0, 36); lamp(4.2, 6.6, 3.8, 3.6, 1.2, .8, 26);
+lamp(-6.2, 5.8, 2.8, -4, .5, 0, 14);
+const fill = new THREE.DirectionalLight(0xaebbd0, .22); fill.position.set(-5, 3, 9); scene.add(fill);
+const front = new THREE.DirectionalLight(0xffd9a8, .45); front.position.set(0, 6, 9); front.target.position.set(0,0,1); scene.add(front, front.target);
 
 /*═══════════════════════════════════════════════════════════════════════════
   MATERIALS
@@ -396,37 +403,47 @@ const M = {
   floor: new THREE.MeshStandardMaterial({ map:tex('floor',6,6), color:COLOR.floor, roughness:.6, metalness:.1 }),
   brass: new THREE.MeshStandardMaterial({ map:tex('brass',1,1), roughness:.3,  metalness:.95, color:COLOR.brass }),
   brassD:new THREE.MeshStandardMaterial({ map:tex('brass',2,2), roughness:.46, metalness:.9,  color:COLOR.brassDark }),
-  iron:  new THREE.MeshStandardMaterial({ color:0x2a2a2c, roughness:.55, metalness:.85 }),
-  paper: new THREE.MeshStandardMaterial({ map:tex('parchment',1,1), roughness:.92, metalness:0, side:THREE.DoubleSide }),
+  // the rival's weights are cast iron, so the two sides never look alike
+  iron:  new THREE.MeshStandardMaterial({ color:0x3a3d42, roughness:.5, metalness:.85 }),
+  // the dark enamel face every name sits on
+  enamel:new THREE.MeshStandardMaterial({ color:0x15110c, roughness:.55, metalness:.15 }),
+  enamelIron:new THREE.MeshStandardMaterial({ color:0x101215, roughness:.6, metalness:.25 }),
 };
-function canvasTex(w,h,draw){ const c=document.createElement('canvas'); c.width=w; c.height=h; draw(c.getContext('2d'),w,h);
-  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; t.canvas=c; return t; }
-const FD='"Cinzel",Georgia,serif', FS='"Crimson Pro",Georgia,serif';
 
 /*═══════════════════════════════════════════════════════════════════════════
-  TABLE
+  ROOM AND TABLE
 ═══════════════════════════════════════════════════════════════════════════*/
 function box(w,h,d,m,x,y,z,parent=scene){ const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); b.position.set(x,y,z); b.castShadow=b.receiveShadow=true; parent.add(b); return b; }
+function rbox(w,h,d,r,m,x,y,z,parent=scene){ const b=new THREE.Mesh(new RoundedBoxGeometry(w,h,d,3,r),m); b.position.set(x,y,z); b.castShadow=b.receiveShadow=true; parent.add(b); return b; }
 function cyl(r,len,m,seg=24){ const c=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,seg),m); c.castShadow=c.receiveShadow=true; return c; }
-const TABLE = { y:0, x0:-8.2, x1:8.2, z0:-2.6, z1:3.0 };
+const TABLE = { x0:-6.4, x1:6.4, z0:-2.4, z1:3.0, y:.012 };
 const floor=new THREE.Mesh(new THREE.PlaneGeometry(40,30), M.floor); floor.rotation.x=-Math.PI/2; floor.position.set(0,-3.4,0); floor.receiveShadow=true; scene.add(floor);
-const backWall=new THREE.Mesh(new THREE.PlaneGeometry(40,20), new THREE.MeshStandardMaterial({ map:tex('walnut',6,3), color:0x2e2419, roughness:.8, metalness:.05 }));
+const backWall=new THREE.Mesh(new THREE.PlaneGeometry(44,22), new THREE.MeshStandardMaterial({ map:tex('walnut',6,3), color:0x2e2419, roughness:.8, metalness:.05 }));
 backWall.position.set(0,6.0,-10.5); backWall.receiveShadow=true; scene.add(backWall);
 (function table(){
   const w=TABLE.x1-TABLE.x0, d=TABLE.z1-TABLE.z0, cx=(TABLE.x0+TABLE.x1)/2, cz=(TABLE.z0+TABLE.z1)/2;
-  const baize=new THREE.Mesh(new THREE.PlaneGeometry(w-.9,d-.7), M.baize); baize.rotation.x=-Math.PI/2; baize.position.set(cx,.012,cz-.1); baize.receiveShadow=true; scene.add(baize);
-  box(w+.5,.2,d+.5,M.walnut,cx,-.1,cz);                         // wood surround, its top just under the cloth
-  box(w+.5,.52,.34,M.walnutT,cx,-.42,TABLE.z1+.2);              // front apron
+  const baize=new THREE.Mesh(new THREE.PlaneGeometry(w-.9,d-.7), M.baize); baize.rotation.x=-Math.PI/2; baize.position.set(cx,TABLE.y,cz-.1); baize.receiveShadow=true; scene.add(baize);
+  box(w+.5,.2,d+.5,M.walnut,cx,-.1,cz);
+  box(w+.5,.52,.34,M.walnutT,cx,-.42,TABLE.z1+.2);
   box(w+.5,.52,.34,M.walnutT,cx,-.42,TABLE.z0-.2);
   for(const s of [-1,1]) for(const t of [-1,1]) { const leg=cyl(.16,2.4,M.walnutT,12); leg.position.set(cx+s*(w/2-.5),-1.6,cz+t*(d/2-.5)); scene.add(leg); }
-  // brass edge banding, catches the lamps
   const band=new THREE.Mesh(new THREE.BoxGeometry(w+.54,.06,.06), M.brassD); band.position.set(cx,-.16,TABLE.z1+.38); scene.add(band);
 })();
 
 /*═══════════════════════════════════════════════════════════════════════════
-  BALANCE — column, beam, two hanging pans
+  BALANCE — column, beam, two hanging pans. Each pan hangs from a beam end on
+  chains up its two ends, so the weights stack between the chains. The rival's
+  pan is on the left. The beam tips toward the heavier pan as each weight
+  lands or comes off.
 ═══════════════════════════════════════════════════════════════════════════*/
-const SC = { x:-1.55, pivotY:3.4, arm:2.45, hang:1.5, panR:1.16, maxTilt:.13 };
+const SC = { x:-2.2, A:2.45, pivotY:3.5, yP:.72, panR:1.65, maxTilt:.1 };
+// the spreader sits just over the tallest stack any meeting can build, so the chains above it make the old triangle
+SC.spread=(()=>{ const H={ 1:.44, 2:.58, 3:.74 }, need=id=>CONTENT.rounds.flatMap(R=>R.needs).find(n=>n.id===id);
+  let top=0;
+  for(const R of CONTENT.rounds){ const sides=[R.rival.map(r=>H[need(r.need).priority]), R.items.filter(i=>i.need).map(i=>H[need(i.need).priority]).sort((a,b)=>b-a).slice(0,R.slots)];
+    for(const hs of sides){ const c=[0,0]; for(const h of hs.sort((a,b)=>b-a)) c[c[0]<=c[1]?0:1]+=h; top=Math.max(top, ...c); } }
+  return Math.min(Math.max(top+.3, 1.3), 2.45); })();
+const COLX=[-.78,.78];   // the two stacks on each pan
 (function column(){
   const {x,pivotY}=SC;
   box(1.5,.14,1.0,M.brassD,x,.07,0);
@@ -438,532 +455,684 @@ const SC = { x:-1.55, pivotY:3.4, arm:2.45, hang:1.5, panR:1.16, maxTilt:.13 };
 })();
 const BEAM = new THREE.Group(); BEAM.position.set(SC.x, SC.pivotY, 0); scene.add(BEAM);
 (function beam(){
-  const a=SC.arm;
-  const bar=box(a*2,.1,.13,M.brass,0,0,0,BEAM);
+  const a=SC.A;
+  box(a*2,.1,.13,M.brass,0,0,0,BEAM);
   for(const s of [-1,1]){ const t=new THREE.Mesh(new THREE.ConeGeometry(.08,.34,4),M.brass); t.rotation.z=s*Math.PI/2; t.position.set(s*(a+.14),0,0); BEAM.add(t); }
   const boss=new THREE.Mesh(new THREE.SphereGeometry(.2,20,14),M.brass); BEAM.add(boss);
-  const ptr=box(.055,.5,.05,M.brassD,0,.32,0,BEAM);
-  for(let i=-4;i<=4;i++){ const r=box(.05,.05,.05,M.brassD,i*.55,.07,.07,BEAM); }
+  box(.055,.5,.05,M.brassD,0,.32,0,BEAM);
+  for(let i=-4;i<=4;i++) box(.05,.05,.05,M.brassD,i*.55,.07,.07,BEAM);
   BEAM.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
 })();
-function makePan(side){
+// a chain link between two points, in the pan's own frame
+function chain(g, a, b){ const d=b.clone().sub(a), c=cyl(.012,d.length(),M.brass,6);
+  c.position.copy(a).add(b).multiplyScalar(.5); c.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.normalize()); g.add(c); }
+function platform(s){
   const g=new THREE.Group(); scene.add(g);
-  const R=SC.panR;
-  const pts=[]; for(const [r,y] of [[0,0],[R*.4,.015],[R*.75,.05],[R*.97,.13],[R,.17],[R*.985,.12],[R*.72,.035],[R*.38,.005],[0,-.012]]) pts.push(new THREE.Vector2(r,y));
-  const dish=new THREE.Mesh(new THREE.LatheGeometry(pts,48), new THREE.MeshStandardMaterial({ map:tex('brass',1,1), color:0xD9AF5E, roughness:.34, metalness:.95, side:THREE.DoubleSide }));
+  const R=SC.panR, Y=SC.spread, top=SC.pivotY-SC.yP, V=(x,y,z=0)=>new THREE.Vector3(x,y,z);
+  // the brass dish, with a flat floor wide enough for two stacks
+  const pts=[[0,-.03],[R*.9,-.02],[R*.985,.07],[R,.1],[R*.96,.04],[R*.88,0],[0,0]].map(([r,y])=>new THREE.Vector2(r,y));
+  const dish=new THREE.Mesh(new THREE.LatheGeometry(pts,56), new THREE.MeshStandardMaterial({ map:tex('brass',1,1), color:0xD9AF5E, roughness:.34, metalness:.95, side:THREE.DoubleSide }));
   dish.castShadow=dish.receiveShadow=true; g.add(dish);
-  const rim=new THREE.Mesh(new THREE.TorusGeometry(R,.026,10,56),M.brassD); rim.rotation.x=Math.PI/2; rim.position.y=.17; g.add(rim);
-  const H=SC.hang-.17, cr=R*.52;
-  for(const a of [-2.2,0,2.2]){ const bx=Math.sin(a)*cr, bz=Math.cos(a)*cr;
-    const c=cyl(.012,H,M.brass,6); c.position.set(bx/2, .17+H/2, bz/2);
-    c.rotation.z=Math.asin(bx/H); c.rotation.x=-Math.asin(bz/H); g.add(c); }
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(.07,.017,8,20),M.brassD); ring.position.y=SC.hang; g.add(ring);
-  return { g, side, items:[], dip:0, dipV:0 };
-}
-const PAN = { left:makePan(-1), right:makePan(1) };
-// splits land on a small rail at the fulcrum: neither side takes them
-const CENTRE = { items:[], x:SC.x, y:SC.pivotY+.40 };
-(function centreRail(){ box(2.0,.07,.34,M.brass,SC.x,SC.pivotY+.60,0); box(2.06,.04,.4,M.brassD,SC.x,SC.pivotY+.56,0);
-  for(const s of [-1,1]) box(.07,.42,.07,M.brassD,SC.x+s*.7,SC.pivotY+.36,0); })();
-const TABLE_SLOT = { items:[], x:1.0, y:.32, z:2.05 };   // where struck weights land
-
-/*═══════════════════════════════════════════════════════════════════════════
-  WEIGHTS — brass plaques, stamped, sized by how much the criterion counts
-═══════════════════════════════════════════════════════════════════════════*/
-function stampTex(text, wide){
-  return canvasTex(wide?512:384, 256, (g,w,h)=>{
-    g.clearRect(0,0,w,h);
-    const m=13;
-    g.fillStyle='#100E0A'; g.fillRect(m,m,w-2*m,h-2*m);                       // recessed ink plate
-    g.strokeStyle='rgba(240,210,155,.5)'; g.lineWidth=6; g.strokeRect(m+6,m+6,w-2*m-12,h-2*m-12);
-    const words=text.split(' ');
-    const lines = words.length>1 && text.length>9 ? [words[0], words.slice(1).join(' ')] : [text];
-    let size = lines.length>1 ? 84 : 104;
-    g.font=`600 ${size}px ${FD}`;
-    const widest=()=>Math.max(...lines.map(l=>g.measureText(l).width));
-    while(size>22 && widest()>w-2*m-36){ size-=2; g.font=`600 ${size}px ${FD}`; }
-    g.textAlign='center'; g.textBaseline='middle';
-    lines.forEach((l,i)=>{
-      const y=h/2 + (i-(lines.length-1)/2)*(size+10);
-      g.font=`600 ${size}px ${FD}`;
-      g.fillStyle='#000';    g.fillText(l, w/2, y+3);
-      g.fillStyle='#F8EDD5'; g.fillText(l, w/2, y);
-    });
-  });
-}
-function tagTex(){ return canvasTex(320,208,(g,w,h)=>{
-  g.fillStyle='#A82A22'; g.fillRect(0,0,w,h);
-  for(let i=0;i<300;i++){ g.fillStyle=`rgba(60,10,6,${Math.random()*.10})`; g.fillRect(Math.random()*w,Math.random()*h,3,3); }
-  g.strokeStyle='#F0DCC0'; g.lineWidth=9; g.strokeRect(13,13,w-26,h-26);
-  g.fillStyle='#1a0806'; g.beginPath(); g.arc(w/2,40,12,0,7); g.fill();
-  g.textAlign='center'; g.textBaseline='middle';
-  let size=96; g.font=`600 ${size}px ${FD}`;
-  while(size>30 && g.measureText('STRUCK').width>w-56){ size-=2; g.font=`600 ${size}px ${FD}`; }
-  g.fillStyle='#40100C'; g.fillText('STRUCK', w/2+3, h/2+30);
-  g.fillStyle='#FBEFD6'; g.fillText('STRUCK', w/2,   h/2+27);
-}); }
-const TAG_TEX = tagTex();
-const pickables=[];
-function makeWeight(c, kind){
-  const w=.36+.11*c.w, h=.24+.07*c.w, d=.15;
-  const g=new THREE.Group(); scene.add(g);
-  const body=box(w,h,d,M.brass,0,0,0,g);
-  const st=stampTex(c.stamp, w>.75);
-  const face=new THREE.Mesh(new THREE.PlaneGeometry(w-.05,h-.05),
-    new THREE.MeshStandardMaterial({ map:st, emissive:0xffffff, emissiveMap:st, emissiveIntensity:.55,
-      transparent:true, roughness:.8, metalness:.05, color:0xffffff }));
-  face.position.z=d/2+.004; g.add(face);
-  const knob=new THREE.Mesh(new THREE.TorusGeometry(.055,.017,8,18),M.brassD); knob.position.y=h/2+.05; knob.rotation.y=Math.PI/2; g.add(knob);
-  const grab=new THREE.Mesh(new THREE.BoxGeometry(w+.1,h+.2,.5), new THREE.MeshBasicMaterial({visible:false})); g.add(grab);
-  grab.userData.crit=c.id; pickables.push(grab);
-  const tag=new THREE.Group(); tag.position.set(w/2+.30, h/2-.03, .06); tag.visible=false; g.add(tag);
-  const str=cyl(.006,.11,M.brassD,6); str.position.y=-.055; tag.add(str);
-  const card=new THREE.Mesh(new THREE.PlaneGeometry(.40,.26), new THREE.MeshStandardMaterial({ map:TAG_TEX,
-    emissive:0xffffff, emissiveMap:TAG_TEX, emissiveIntensity:.45, roughness:.9, side:THREE.DoubleSide }));
-  card.position.y=-.24; card.castShadow=true; tag.add(card);
-  const eye=new THREE.Mesh(new THREE.TorusGeometry(.028,.008,6,14),M.brassD); eye.rotation.y=Math.PI/2; tag.add(eye);
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(R,.026,10,64),M.brassD); rim.rotation.x=Math.PI/2; rim.position.y=.1; g.add(rim);
+  // chains up the two ends of the pan to a spreader, then in to the ring on the beam end
+  const cx=R*.97;
+  for(const x of [-1,1]) chain(g, V(x*cx,.1), V(x*cx,Y));
+  box(cx*2+.06,.045,.05,M.brassD,0,Y,0,g);
+  for(const x of [-1,1]) chain(g, V(x*cx,Y), V(0,top-.07));
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.07,.017,8,20),M.brassD); ring.position.y=top; g.add(ring);
   g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
-  return { c, kind, g, w, h, tag, pos:new THREE.Vector3(), place:kind==='stated'?'left':'rack', slot:0, flight:null, bounce:9 };
+  return { s, g, x:SC.x+s*SC.A, y:SC.yP, top:SC.yP, dip:0, dipV:0, cols:[[],[]] };
 }
-const W = {};
-CONTENT.stated.forEach((c,i)=>{ const w=makeWeight(c,'stated'); W[c.id]=w; PAN.left.items.push(c.id); });
-const RACK = { x:4.7, z:.9, cols:[4.24,5.16], rows:[.34,.92,1.50,2.08,2.66] };
+const PLAT = { them:platform(-1), us:platform(1) };
+// a name plate stands on top of each beam end and tips with it
+function namePlate(name, s){
+  const c=document.createElement('canvas'); c.width=512; c.height=128; const g=c.getContext('2d');
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8;
+  // the lit face: a glowing brass sign with dark letters, faded in over the plain one
+  const c2=document.createElement('canvas'); c2.width=512; c2.height=128; const g2=c2.getContext('2d');
+  const t2=new THREE.CanvasTexture(c2); t2.colorSpace=THREE.SRGBColorSpace; t2.anisotropy=8;
+  const draw=()=>{ g.fillStyle='#14110d'; g.fillRect(0,0,512,128); g.fillStyle='#EFE3C6'; g.font='600 64px "Crimson Pro", Georgia, serif';
+    g.textAlign='center'; g.textBaseline='middle'; g.fillText(name,256,68); t.needsUpdate=true;
+    const gr=g2.createLinearGradient(0,0,0,128); gr.addColorStop(0,'#FFE7A8'); gr.addColorStop(1,'#E2A94C');
+    g2.fillStyle=gr; g2.fillRect(0,0,512,128); g2.fillStyle='#1a1208'; g2.font='700 64px "Crimson Pro", Georgia, serif';
+    g2.textAlign='center'; g2.textBaseline='middle'; g2.fillText(name,256,68); t2.needsUpdate=true; };
+  draw(); document.fonts.load('600 64px "Crimson Pro"').then(draw);
+  const w=1.45, h=.36, grp=new THREE.Group();
+  const frameM=new THREE.Mesh(new THREE.BoxGeometry(w+.08,h+.08,.06), M.brass); grp.add(frameM);
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshStandardMaterial({ map:t, emissiveMap:t, emissive:0xffc970, emissiveIntensity:0, roughness:.6, metalness:.1 }));
+  const lit=new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({ map:t2, transparent:true, opacity:0, toneMapped:false })); lit.position.z=.034; grp.add(lit);
+  const hc=document.createElement('canvas'); hc.width=hc.height=128; const hg=hc.getContext('2d'), rg=hg.createRadialGradient(64,64,0,64,64,64);
+  rg.addColorStop(0,'rgba(255,200,110,.9)'); rg.addColorStop(1,'rgba(255,200,110,0)'); hg.fillStyle=rg; hg.fillRect(0,0,128,128);
+  const halo=new THREE.Mesh(new THREE.PlaneGeometry(w*2.1,h*3.6), new THREE.MeshBasicMaterial({ map:new THREE.CanvasTexture(hc), transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false, toneMapped:false }));
+  halo.position.z=-.05; grp.add(halo);
+  frameM.material=M.brass.clone(); frameM.material.emissive=new THREE.Color(0xc98a2e); frameM.material.emissiveIntensity=0; face.position.z=.032; grp.add(face);
+  box(.05,.14,.04,M.brassD,-w*.3,-h/2-.06,0,grp); box(.05,.14,.04,M.brassD,w*.3,-h/2-.06,0,grp);
+  grp.position.set(s*SC.A, .05+h/2+.13, .02); BEAM.add(grp); return { face, frameM, lit, halo, grp };
+}
+const PLATES={ them:namePlate(THEM,-1), us:namePlate(US,1) };
+// a warm light that lands on the pan that wins a need
+const WINL={};
+for(const k of ['them','us']) WINL[k]={ v:0, want:0 };
+function winLight(k){ for(const j in WINL) WINL[j].want = j===k ? 1 : 0; }
+const BAL = { th:0, om:0, K:6 };
+// how high a weight the committee takes off rises before it is out of the picture
+const LEAVE_H=6;
+
+// the rack, right of the scale: two columns, four shelves, read from the top left
+const RACK = { x0:1.95, x1:5.47, z:.8, cols:[2.88,4.54], shelf:[2.76,1.86,.96,TABLE.y], top:3.68 };
 (function rack(){
-  const x0=RACK.cols[0]-.55, x1=RACK.cols[1]+.55;
-  for(const x of [x0,x1]){ const p=cyl(.05,3.16,M.brassD,12); p.position.set(x,1.58,RACK.z); scene.add(p);
-    const f=cyl(.13,.07,M.brass,16); f.position.set(x,.03,RACK.z); scene.add(f); }
-  for(const y of RACK.rows){ box(x1-x0+.2,.05,.4,M.walnutT,(x0+x1)/2,y-.02,RACK.z); box(x1-x0+.2,.03,.03,M.brassD,(x0+x1)/2,y+.02,RACK.z+.19); }
-  box(x1-x0+.3,.08,.48,M.walnutT,(x0+x1)/2,3.12,RACK.z);
+  const {x0,x1,z}=RACK, cx=(x0+x1)/2;
+  for(const x of [x0,x1]) for(const dz of [-.22,.22]){ const p=cyl(.045,RACK.top,M.brassD,12); p.position.set(x,RACK.top/2,z+dz); scene.add(p); }
+  for(const y of RACK.shelf.slice(0,3)){ box(x1-x0+.16,.05,.56,M.walnutT,cx,y-.025,z); box(x1-x0+.16,.035,.03,M.brassD,cx,y+.012,z+.29); }
+  box(x1-x0+.3,.09,.62,M.walnutT,cx,RACK.top+.045,z);
 })();
-CONTENT.candidates.forEach((c,i)=>{ const w=makeWeight(c,'cand'); W[c.id]=w;
-  w.rackPos=new THREE.Vector3(RACK.cols[i%2], RACK.rows[Math.floor(i/2)]+(.24+.07*c.w)/2, RACK.z);
-  w.g.position.copy(w.rackPos); w.pos.copy(w.rackPos); });
 
 /*═══════════════════════════════════════════════════════════════════════════
-  CREDIBILITY — a plumb bob on a graduated arc, LOW to HIGH
+  WEIGHTS — one per feature. A weight's size is its need's priority, so the
+  needs that score most look heaviest.
+  Every name is in the one size --wf; NAME_FIT says how many letters each size holds.
 ═══════════════════════════════════════════════════════════════════════════*/
-const CRED = (()=>{
-  const x=2.85, z=.25, pivotY=2.9, R=.56, SPAN=.62;
-  box(.95,.1,.6,M.brassD,x,.05,z);
-  const post=cyl(.06,pivotY,M.brass,16); post.position.set(x,pivotY/2,z); scene.add(post);
-  const arcTex=canvasTex(1024,640,(g,w,h)=>{
-    g.clearRect(0,0,w,h);
-    const cx=w/2, cy=60, r0=386, r1=478;
-    const a=t=>Math.PI/2 - (t*2-1)*SPAN;                        // t: 0 low (left), 1 high (right)
-    const thr=CONTENT.cred.threshold/100;
-    g.lineWidth=r1-r0; g.lineCap='butt';
-    g.strokeStyle='rgba(20,16,10,.9)'; g.beginPath(); g.arc(cx,cy,(r0+r1)/2, a(1), a(0)); g.stroke();
-    g.strokeStyle='rgba(150,32,24,.92)'; g.beginPath(); g.arc(cx,cy,(r0+r1)/2, a(thr), a(0)); g.stroke();
-    for(let i=0;i<=10;i++){ const t=i/10, an=a(t), major=i%5===0;
-      g.beginPath(); g.moveTo(cx+Math.cos(an)*r0, cy+Math.sin(an)*r0); g.lineTo(cx+Math.cos(an)*(major?r1:r0+28), cy+Math.sin(an)*(major?r1:r0+28));
-      g.lineWidth=major?7:4; g.strokeStyle='#E7CE9A'; g.stroke(); }
-    const an=a(thr); g.beginPath(); g.moveTo(cx+Math.cos(an)*(r0-22), cy+Math.sin(an)*(r0-22)); g.lineTo(cx+Math.cos(an)*(r1+22), cy+Math.sin(an)*(r1+22));
-    g.lineWidth=9; g.strokeStyle='#F3D9A6'; g.stroke();
-    g.fillStyle='#F0DFBB'; g.font=`600 40px ${FD}`; g.textBaseline='middle';
-    g.textAlign='right'; g.fillText('LOW',  cx+Math.cos(a(0))*(r1+34), cy+Math.sin(a(0))*(r1+24));
-    g.textAlign='left';  g.fillText('HIGH', cx+Math.cos(a(1))*(r1+34), cy+Math.sin(a(1))*(r1+24));
-    // outside the band, so the swinging rod never crosses it
-    g.textAlign='center'; g.font=`600 34px ${FD}`; g.fillStyle='#F0AE94';
-    g.fillText('STRUCK', cx+Math.cos(a(thr/2))*(r1+40), cy+Math.sin(a(thr/2))*(r1+30));
-    g.font=`600 32px ${FD}`; g.fillStyle='#F3D9A6';
-    g.fillText(String(CONTENT.cred.threshold), cx+Math.cos(a(thr))*(r1+40), cy+Math.sin(a(thr))*(r1+30));
-  });
-  // the arc is drawn around canvas point (512,60); put that point on the rod's pivot
-  const PW=2.6, PH=PW*640/1024;
-  const arc=new THREE.Mesh(new THREE.PlaneGeometry(PW,PH), new THREE.MeshStandardMaterial({ map:arcTex, transparent:true, roughness:.6, metalness:.2 }));
-  arc.position.set(x, pivotY - (PH/2 - (60/640)*PH), z-.07);
-  scene.add(arc);
-  const boss=cyl(.13,.1,M.brass,20); boss.rotation.x=Math.PI/2; boss.position.set(x,pivotY,z); scene.add(boss);
-  const rodG=new THREE.Group(); rodG.position.set(x,pivotY,z+.05); scene.add(rodG);
-  const rod=cyl(.026,R,M.brass,10); rod.position.y=-R/2; rodG.add(rod);
-  const bob=new THREE.Group(); bob.position.y=-R; rodG.add(bob);
-  const ball=new THREE.Mesh(new THREE.SphereGeometry(.14,20,16),M.brass); bob.add(ball);
-  const tip=new THREE.Mesh(new THREE.ConeGeometry(.115,.42,20),M.brass); tip.position.y=-.24; tip.rotation.z=Math.PI; bob.add(tip);
-  const collar=new THREE.Mesh(new THREE.TorusGeometry(.095,.022,8,20),M.brassD); collar.rotation.x=Math.PI/2; collar.position.y=.11; bob.add(collar);
-  rodG.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
-  return { x, z, pivotY, R, SPAN, rodG, angle:SPAN, target:SPAN };
-})();
-const credAngle = v => (clamp(v,0,100)/100*2-1)*CRED.SPAN;
+const SIZE = { 1:{ w:.94, h:.44, d:.2 }, 2:{ w:1.2, h:.58, d:.26 }, 3:{ w:1.48, h:.74, d:.32 } };
+const NAME_F = .14;   // the name's text size, in world units
+function rrShape(w,h,r,cx=0){ const s=new THREE.Shape(), x=cx-w/2, y=-h/2;
+  s.moveTo(x+r,y); s.lineTo(x+w-r,y); s.quadraticCurveTo(x+w,y,x+w,y+r); s.lineTo(x+w,y+h-r); s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  s.lineTo(x+r,y+h); s.quadraticCurveTo(x,y+h,x,y+h-r); s.lineTo(x,y+r); s.quadraticCurveTo(x,y,x+r,y); return s; }
+const GEO = {};
+const weightGeo = n => GEO['w'+n] ||= new RoundedBoxGeometry(SIZE[n].w, SIZE[n].h, SIZE[n].d, 3, .045);
+const panelGeo = n => GEO['p'+n] ||= new THREE.ShapeGeometry(rrShape(SIZE[n].w-.09, SIZE[n].h-.09, .03));
+
+const W = {}, WL = [];   // every weight; WL keeps the order their buttons sit in the page
+function sizeOf(o){ if(o.kind==='rival') return NEED[o.need].priority; return o.need ? NEED[o.need].priority : 1; }
+function ariaFor(w){
+  if(w.kind==='rival') return `${THEM}: ${w.name}${w.isNew ? ', new' : ''}`;
+  const where = w.place==='us' ? ', placed' : '';
+  return `${w.name}${where}`;
+}
+function makeWeight(o){
+  const size=sizeOf(o), g=new THREE.Group(); g.visible=false; scene.add(g);
+  const S=SIZE[size], dims={ ...S };
+  const body=new THREE.Mesh(weightGeo(size), (o.side==='us'?M.brass:M.iron).clone());
+  const panel=new THREE.Mesh(panelGeo(size), (o.side==='us'?M.enamel:M.enamelIron).clone()); panel.position.z=S.d/2+.003;
+  const lab={ x0:-S.w/2+.05, x1:S.w/2-.05, y0:-S.h/2+.05, y1:S.h/2-.05, z:panel.position.z };
+  body.castShadow=body.receiveShadow=true; panel.receiveShadow=true; g.add(body, panel);
+  body.material.emissive=new THREE.Color(o.side==='us'?0x7a5418:0x34404f); body.material.emissiveIntensity=0;
+  const btn=document.createElement('button'); btn.type='button'; btn.className='wb'; btn.hidden=true; btn.dataset.w=o.id;
+  const lines=nameLines(o.name, ...NAME_FIT[size]) || [o.name];
+  btn.replaceChildren(...lines.flatMap((l,i)=>i ? [document.createElement('br'), l] : [l]));
+  labelsEl.appendChild(btn);
+  const w = { ...o, size, g, body, panel, dims, lab, btn, place:'hidden', col:-1, slot:-1,
+    flight:null, fallV:0, glow:0, hover:false, dim:false, base:[body.material.color.clone(), panel.material.color.clone()] };
+  if(o.isNew){ w.badge=document.createElement('div'); w.badge.className='new'; w.badge.textContent='New'; w.badge.hidden=true; w.badge.setAttribute('aria-hidden','true'); labelsEl.appendChild(w.badge); }
+  btn.addEventListener('click', ()=>openWeight(w));
+  btn.addEventListener('pointerenter', ()=>{ w.hover=true; });
+  btn.addEventListener('pointerleave', ()=>{ w.hover=btn.classList.contains('hot'); });
+  btn.addEventListener('focus', ()=>{ w.hover=true; btn.classList.add('hot'); });
+  btn.addEventListener('blur', ()=>{ w.hover=false; btn.classList.remove('hot'); });
+  W[o.id]=w; WL.push(w); return w;
+}
+ROUNDS.forEach((R,ri)=>{
+  for(const r of R.rival) makeWeight({ id:r.id, kind:'rival', round:ri, name:r.name, need:r.need, side:'them', isNew:!!r.when });
+  for(const it of R.items) makeWeight({ id:it.id, kind:'feature', round:ri, name:it.name, need:it.need, side:'us' });
+});
+function setDim(w, on){ if(w.dim===on) return; w.dim=on; w.btn.classList.toggle('dim', on);
+  w.body.material.color.copy(w.base[0]).multiplyScalar(on?.42:1); w.panel.material.color.copy(w.base[1]).multiplyScalar(on?.7:1); }
 
 /*═══════════════════════════════════════════════════════════════════════════
-  BAKE-OFF SHEET — parchment on a brass frame, unrolls downward
+  WHERE A WEIGHT SITS — a weight stands on the one under it, so taking one
+  out of a stack drops the ones above it
 ═══════════════════════════════════════════════════════════════════════════*/
-const SHEET = (()=>{
-  const x=-6.4, z=.35, w=2.0, hMax=2.5, topY=2.9;
-  box(.7,.1,.6,M.brassD,x,.05,z);
-  for(const s of [-1,1]){ const p=cyl(.045,topY,M.brass,12); p.position.set(x+s*(w/2+.13), topY/2, z); scene.add(p);
-    const k=new THREE.Mesh(new THREE.SphereGeometry(.09,14,12),M.brassD); k.position.set(x+s*(w/2+.13), topY+.05, z); scene.add(k); }
-  const rod=cyl(.06,w+.34,M.brass,16); rod.rotation.z=Math.PI/2; rod.position.set(x,topY,z); scene.add(rod);
-  const t=canvasTex(768,968,()=>{}); t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;
-  const geo=new THREE.PlaneGeometry(w,hMax); geo.translate(0,-hMax/2,0);
-  const sheet=new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map:t, roughness:.9, metalness:0, side:THREE.DoubleSide }));
-  sheet.position.set(x, topY-.04, z+.02); sheet.castShadow=true; sheet.scale.y=.001; scene.add(sheet);
-  const roll=cyl(.11,w,M.paper,20); roll.rotation.z=Math.PI/2; roll.position.set(x, topY-.16, z+.06); scene.add(roll);
-  const grab=new THREE.Mesh(new THREE.PlaneGeometry(w+.4,hMax), new THREE.MeshBasicMaterial({visible:false}));
-  grab.position.set(x, topY-hMax/2, z+.1); grab.userData.sheet=true; scene.add(grab); pickables.push(grab);
-  return { x, z, w, hMax, topY, mesh:sheet, tex:t, roll, open:0, target:0, rows:0 };
-})();
-function drawSheet(rows){
-  const g=SHEET.tex.canvas.getContext('2d'), w=768, h=968;
-  g.fillStyle='#E9DCBC'; g.fillRect(0,0,w,h);
-  const img=PAPER_IMG; if(img.complete && img.naturalWidth){ g.globalAlpha=.6; g.drawImage(img,0,0,w,h); g.globalAlpha=1; }
-  const rg=g.createLinearGradient(0,0,w,h); rg.addColorStop(0,'rgba(90,60,20,.06)'); rg.addColorStop(1,'rgba(60,40,10,.22)'); g.fillStyle=rg; g.fillRect(0,0,w,h);
-  g.fillStyle='#241a0c'; g.textAlign='center'; g.font=`600 62px ${FD}`; g.fillText('BAKE-OFF', w/2, 92);
-  g.strokeStyle='rgba(40,28,10,.5)'; g.lineWidth=4; g.beginPath(); g.moveTo(60,124); g.lineTo(w-60,124); g.stroke();
-  const cU=w*.62, cT=w*.86;
-  // Column half-width each header name must fit in without overlapping its neighbor
-  // or running off the canvas edge — shrink the font instead of a fixed size that
-  // clips a longer vendor name (was: "SPLUNK" fit at 34px, a longer name did not).
-  const colHalfW = (cT-cU)/2 - 6;
-  g.fillStyle='#3a2a12';
-  let hSize=34;
-  const fits=()=>{ g.font=`600 ${hSize}px ${FD}`;
-    return g.measureText(CONTENT.us.short).width/2<=colHalfW && g.measureText(CONTENT.them.short).width/2<=colHalfW; };
-  while(hSize>16 && !fits()) hSize-=2;
-  g.font=`600 ${hSize}px ${FD}`;
-  g.fillText(CONTENT.us.short, cU, 168); g.fillText(CONTENT.them.short, cT, 168);
-  g.textAlign='left'; g.font=`600 30px ${FD}`; g.fillStyle='#5a4326';
-  g.fillText(state.phase==='read' ? 'WHAT WE KNOW' : 'RESULTS', 58, 168);
-  g.beginPath(); g.moveTo(58,190); g.lineTo(w-58,190); g.lineWidth=3; g.strokeStyle='rgba(40,28,10,.35)'; g.stroke();
-  const list = rows || SHEET.list || [];
-  list.forEach((r,i)=>{
-    const y=246+i*66;
-    g.textAlign='left'; g.font=`600 38px ${FD}`; g.fillStyle=r.dim?'#8c7c5e':'#241a0c'; g.fillText(r.stamp, 58, y);
-    g.textAlign='center'; g.font=`600 40px ${FD}`;
-    const mark=(c,who)=>{ g.fillStyle = who ? (who==='us'?'#1F5C3A':'#8E2018') : 'rgba(80,64,40,.35)'; g.fillText(who?'●':'–', c, y+2); };
-    if(r.takes){ mark(cU, r.takes==='us'||r.takes==='split' ? 'us':null); mark(cT, r.takes==='them'||r.takes==='split' ? 'them':null); }
-    else { g.fillStyle='rgba(80,64,40,.35)'; g.fillText('–', cU, y+2); g.fillStyle='#8E2018'; g.fillText('●', cT, y+2); }
-    g.strokeStyle='rgba(40,28,10,.18)'; g.lineWidth=2; g.beginPath(); g.moveTo(58,y+22); g.lineTo(w-58,y+22); g.stroke();
-  });
-  SHEET.tex.needsUpdate=true;
+const GRAV=16, CARRY=.55, DROP_H=.8, DROP_T=.34;
+const _t=new THREE.Vector3(), _b=new THREE.Vector3(), _q=new THREE.Vector3();
+const heightOf = ids => ids.reduce((s,id)=>s+W[id].dims.h, 0);
+function stack(P, w){ const c = heightOf(P.cols[0]) <= heightOf(P.cols[1]) ? 0 : 1; P.cols[c].push(w.id); w.col=c; }
+function unstack(w){ const P=PLAT[w.place]; if(!P) return; const col=P.cols[w.col], i=col.indexOf(w.id); if(i>=0) col.splice(i,1); }
+function targetPos(w){
+  const f=w.flight;
+  if(w.place==='rack'){ const i=w.slot; return _t.set(RACK.cols[i%2], RACK.shelf[Math.floor(i/2)] + w.dims.h/2, RACK.z); }
+  if(w.place==='them' || w.place==='us'){
+    const P=PLAT[w.place]; let y=P.top;
+    for(const id of P.cols[w.col]){ if(id===w.id) break; y+=W[id].dims.h; }
+    return _t.set(P.x+COLX[w.col], y+w.dims.h/2, 0);
+  }
+  if(w.place==='off') return offPos(w);
+  return _t.copy(w.g.position);
 }
-const PAPER_IMG = new Image(); PAPER_IMG.src='./assets/tex/parchment.jpg';
-SHEET.list = CONTENT.candidates.filter(c=>c.known && c.takes!=='us').map(c=>({ stamp:c.stamp }))
-  .concat(CONTENT.stated.filter(c=>c.takes==='them').map(c=>({ stamp:c.stamp })));
-PAPER_IMG.onload=()=>drawSheet();
-drawSheet();
-SHEET.target=.62;
-
-/*═══════════════════════════════════════════════════════════════════════════
-  SLOTS — where a weight sits, given what is holding it
-═══════════════════════════════════════════════════════════════════════════*/
-const PITCH=.72, ROWH=.40;
-function slotIn(list, id, ox, oy, oz){
-  const i=list.indexOf(id), n=list.length, row=Math.floor(i/3), inRow=Math.min(3, n-row*3), col=i%3;
-  return new THREE.Vector3(ox + (col-(inRow-1)/2)*PITCH, oy + row*ROWH + .24, oz);
+/* A move is a real drop: lift and carry to a point above the spot, then fall. The sound and the platform's give fire
+   on the frame the weight lands, never on the click. */
+function fly(w, o={}){
+  w.fallV=0;
+  w.flight={ kind:o.kind||'move', t:0, carry:o.carry??CARRY, dropT:o.dropT??DROP_T, arc:o.arc??.3, approach:o.approach||new THREE.Vector3(0,DROP_H,0),
+    from:(o.from||w.g.position).clone(), q0:w.g.quaternion.clone(), q:o.q||null, s0:w.g.scale.clone(), s:o.s??null, ease:o.ease||easeIO,
+    sound:o.sound, gain:o.gain??1, target:o.target };
+  if(state.restoring) settle(w);
 }
-const _p=new THREE.Vector3();
-function targetOf(w){
-  if(w.place==='rack') return w.rackPos;
-  if(w.place==='table'){ const i=TABLE_SLOT.items.indexOf(w.c.id);
-    return _p.set(TABLE_SLOT.x - i*1.02, TABLE_SLOT.y, TABLE_SLOT.z); }
-  if(w.place==='centre') return slotIn(CENTRE.items, w.c.id, CENTRE.x, CENTRE.y+.20, 0);
-  const pan=PAN[w.place]; return slotIn(pan.items, w.c.id, pan.g.position.x, pan.g.position.y+.17, pan.g.position.z);
-}
-/* A move is a real drop: lift and carry to a point above the slot, hang for a beat, then fall under gravity.
-   The sound, the pan dip and the beam's response all fire on the frame the weight hits, never on the click. */
-const CARRY=.6, DROP_H=.9, DROP_T=.38;                    // fall time from the height: g = 2h/t^2
-function fly(w, sound){
-  if(state.restoring){ w.g.position.copy(targetOf(w)); w.flight=null; return; }
-  w.flight={ from:w.g.position.clone(), t:0, sound }; }
 function land(w){
-  const f=w.flight; w.flight=null; w.bounce=0;
-  if(f.sound) audio.play(f.sound);
-  if(w.place==='left'||w.place==='right') PAN[w.place].dipV -= .55+.25*w.c.w;
-  if(w.place==='table') redLamp.userData.pulse=1;
+  const f=w.flight; w.flight=null;
+  { w.g.position.copy(targetPos(w)); if(f.q) w.g.quaternion.copy(f.q); if(f.s!=null) w.g.scale.setScalar(f.s); }
+  if(f.sound) sfx(f.sound, f.gain);
+  if(PLAT[w.place]) PLAT[w.place].dipV -= .5+.15*w.size;
 }
+// finish a flight on the spot: a skip, a restore, the end of a meeting
+function settle(w){ if(!w.flight) return; w.flight.sound=null; land(w); }
 const easeIO=u=>u<.5 ? 4*u*u*u : 1-Math.pow(-2*u+2,3)/2;
+// The committee takes a weight off: it is lifted off the pan and set down on the table in front of it, in up to two
+// rows, and the weights above it settle (their landing is the sound).
+const OFF = { them:[], us:[] }, OFF_X = { them:-3.95, us:.25 }, OFF_Z = [1.95, 2.5], OFF_ROW = 4;
+function offPos(w){
+  const list=OFF[w.side], rows=[[]]; let width=0;
+  for(const id of list){ const d=W[id].dims.w+.12; if(width+d>OFF_ROW && rows.at(-1).length){ rows.push([]); width=0; } rows.at(-1).push(id); width+=d; }
+  const r=Math.min(rows.findIndex(row=>row.includes(w.id)), OFF_Z.length-1), row=rows[r];
+  let x=OFF_X[w.side]-(row.reduce((a,id)=>a+W[id].dims.w+.12, 0)-.12)/2;
+  for(const id of row){ if(id===w.id) break; x+=W[id].dims.w+.12; }
+  return _t.set(x+w.dims.w/2, TABLE.y+w.dims.h/2, OFF_Z[r]);
+}
+function takeOff(w){
+  if(PLAT[w.place]) unstack(w);
+  OFF[w.side].push(w.id); w.place='off'; fly(w, { sound:'place', gain:.5 });
+}
 
 /*═══════════════════════════════════════════════════════════════════════════
-  LABELS AND THE TWO CRITERION DECKS
+  CAMERA — it keeps one angle; the picture is cut to fit the stage the HUD
+  leaves. Placing, it shows the scale and the rack. Weighing, it shows the
+  scale beside the reasons.
 ═══════════════════════════════════════════════════════════════════════════*/
-const labelsEl=document.getElementById('labels'), LABELS=[];
-function label(text, x, y, z, cls='', onClick=null){ const el=document.createElement(onClick?'button':'div'); el.className='lbl cin '+cls; el.textContent=text; labelsEl.appendChild(el);
-  if(onClick){ el.type='button'; el.addEventListener('click', onClick); }
-  const L={ el, p:new THREE.Vector3(x,y,z) }; LABELS.push(L); return L; }
-const sheetBtn=label('Bake-off sheet', SHEET.x, SHEET.topY+.42, SHEET.z, 'small', ()=>openSheet());
-label('Their pan', SC.x-SC.arm, SC.pivotY+.34, 0, 'small');
-label('Your pan',  SC.x+SC.arm, SC.pivotY+.34, 0, 'small');
-label('Credibility', CRED.x, CRED.pivotY+.42, CRED.z, 'small');
-label('Your options', RACK.x, 3.38, RACK.z, 'small');
-
-function deck(title, hint, items, cls, x, y, z){
-  const el=document.createElement('div'); el.className='deck cin '+cls; el.setAttribute('role','group'); el.setAttribute('aria-label',title);
-  el.innerHTML=`<h3>${title}</h3><div class="grid"></div><div class="hint">${hint}</div>`;
-  const grid=el.querySelector('.grid');
-  const btns={};
-  for(const c of items){ const b=document.createElement('button'); b.type='button'; b.textContent=c.stamp;
-    b.setAttribute('aria-label',`${c.stamp}: open the card`); b.addEventListener('click', ()=>openCrit(c, b)); grid.appendChild(b); btns[c.id]=b; }
-  labelsEl.appendChild(el); LABELS.push({ el, p:new THREE.Vector3(x,y,z) });
-  return { el, btns };
+const camera = new THREE.PerspectiveCamera(30, SW/SH, .5, 90);
+const CAM = { y:7.6, z:18, lookY:1.5, xPlay:0, xWeigh:SC.x };
+const VIEW = {
+  scale:[SC.x-SC.A-SC.panR-.12, SC.x+SC.A+SC.panR+.12, 0, SC.pivotY+.6, -SC.panR, SC.panR],
+  rack: [RACK.x0-.17, RACK.x1+.17, 0, RACK.top+.1, RACK.z-.32, RACK.z+.32],   // the top board overhangs the posts .15
+};
+const FR = { u:0, uT:0 };   // 0 placing, 1 weighing
+const HUD = { top:96, bottom:80, dock:448 };
+let wfPx=0;
+function bounds(list, inv){
+  let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
+  for(const b of list) for(const x of [b[0],b[1]]) for(const y of [b[2],b[3]]) for(const z of [b[4],b[5]]){
+    _q.set(x,y,z).applyMatrix4(inv); const d=-_q.z, u=_q.x/d, v=_q.y/d;
+    u0=Math.min(u0,u); u1=Math.max(u1,u); v0=Math.min(v0,v); v1=Math.max(v1,v); }
+  return [u0,u1,v0,v1];
 }
-const DECK_L = deck('Their criteria', 'Click to read', CONTENT.stated, '', -3.9, .5, 1.6);
-const DECK_R = deck('Your options', `Add up to ${CONTENT.maxPlace}`, CONTENT.candidates, 'two', 2.9, .5, 1.6);
+function frameCamera(){
+  const u=FR.u, mix=(a,b)=>a+(b-a)*u;
+  const x=mix(CAM.xPlay, CAM.xWeigh);
+  camera.position.set(x, CAM.y, CAM.z); camera.lookAt(x, CAM.lookY, 0); camera.updateMatrixWorld();
+  const inv=camera.matrixWorldInverse;
+  const a=bounds([VIEW.scale, VIEW.rack], inv), b=bounds([VIEW.scale], inv);
+  const [u0,u1,v0,v1]=a.map((v,i)=>mix(v,b[i]));
+  const l=16, r=mix(16, HUD.dock), t=HUD.top, bt=mix(HUD.bottom, 16);
+  const aw=SW-l-r, ah=SH-t-bt, s=Math.min(aw/(u1-u0), ah/(v1-v0));
+  const cx=l+aw/2, cy=t+ah/2, uc=(u0+u1)/2, vc=(v0+v1)/2, n=camera.near;
+  camera.projectionMatrix.makePerspective((uc-cx/s)*n, (uc+(SW-cx)/s)*n, (vc+cy/s)*n, (vc-(SH-cy)/s)*n, n, camera.far);
+  camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+  // one size for every name: NAME_F, seen at the scale's depth; never under 13px (at the smallest stage it is 12.9)
+  _q.set(SC.x, SC.yP, 0).applyMatrix4(inv);
+  const px=Math.max(13, NAME_F*s/-_q.z);
+  if(Math.abs(px-wfPx)>.04){ wfPx=px; labelsEl.style.setProperty('--wf', px.toFixed(2)+'px'); }
+}
+const topEl=$('top'), bottomEl=$('bottom'), dockEl=$('dock');
+function layout(){
+  SW=stage.clientWidth; SH=stage.clientHeight;
+  document.documentElement.style.setProperty('--ui', clamp(Math.min(SW/1280, SH/720), 1, 1.75).toFixed(3));
+  renderer.setSize(SW, SH); measure();
+}
+// the room the HUD leaves for the picture; the sign can grow a line, so this runs whenever the HUD text changes
+function measure(){
+  const st=stage.getBoundingClientRect(), tb=topEl.getBoundingClientRect(), bb=$('weigh').getBoundingClientRect();
+  HUD.top=tb.bottom-st.top+10; HUD.bottom=st.bottom-bb.top+10;
+  dockEl.style.top=(tb.bottom-st.top+12)+'px'; dockEl.style.maxHeight=(st.bottom-tb.bottom-28)+'px';
+  HUD.dock=dockEl.offsetWidth+32;
+}
+addEventListener('resize', ()=>{ layout(); });
 
-const _v=new THREE.Vector3();
-function projectLabels(){ for(const L of LABELS){ _v.copy(L.p).project(camera); L.el.style.left=((_v.x+1)/2*innerWidth)+'px'; L.el.style.top=((1-_v.y)/2*innerHeight)+'px'; } }
-const TOASTS=[];
-function toast(text, x, y, z, cls=''){ if(state.finished) return;   // the debrief is up; nothing narrates over it
-  document.getElementById('sr').textContent=text; _v.set(x,y,z).project(camera);
-  const el=document.createElement('div'); el.className='toast '+cls; el.textContent=text;
-  let slot=0; while(TOASTS.some(t=>t._slot===slot)) slot++;      // live ones keep their line, so none overprints
-  el._slot=slot; el.style.marginTop=(slot*28)+'px';
-  el.style.left=((_v.x+1)/2*innerWidth)+'px'; el.style.top=((1-_v.y)/2*innerHeight)+'px';
-  labelsEl.appendChild(el); TOASTS.push(el);
-  setTimeout(()=>{ el.remove(); const i=TOASTS.indexOf(el); if(i>=0) TOASTS.splice(i,1); }, 1700); }
+/*═══════════════════════════════════════════════════════════════════════════
+  NAMES ON THE WEIGHTS — each button is laid over its weight's face every frame
+═══════════════════════════════════════════════════════════════════════════*/
+function toScreen(v){ v.project(camera); return [(v.x+1)/2*SW, (1-v.y)/2*SH]; }
+function labelShows(w){
+  if(!w.g.visible || w.place==='hidden') return false;
+  if(w.flight && w.flight.kind!=='move') return false;
+  if(w.place==='rack' && state.phase!=='play' && state.phase!=='needs' && state.phase!=='intro') return false;
+  return true;
+}
+function projectLabels(){
+  for(const w of WL){
+    let show=labelShows(w);
+    if(show){
+      const r=w.lab;
+      const [x0,y0]=toScreen(w.g.localToWorld(_b.set(r.x0, r.y1, r.z)));
+      const [x1,y1]=toScreen(w.g.localToWorld(_b.set(r.x1, r.y0, r.z)));
+      if(x0<2 || y0<2 || x1>SW-2 || y1>SH-2) show=false;
+      else { const s=w.btn.style; s.left=x0+'px'; s.top=y0+'px'; s.width=(x1-x0)+'px'; s.height=(y1-y0)+'px';
+        if(w.badge){ w.badge.style.left=(x1-4)+'px'; w.badge.style.top=(y0+2)+'px'; } }
+    }
+    if(w.btn.hidden===show) w.btn.hidden=!show;
+    if(w.badge && w.badge.hidden===show) w.badge.hidden=!show;
+  }
+}
 
 /*═══════════════════════════════════════════════════════════════════════════
   CARDS
 ═══════════════════════════════════════════════════════════════════════════*/
-let CUR=null, lastFocus=null;
-// Every overlay is modal: nothing behind it takes a click or a Tab. The reveal locks the world too.
-const OVS=['intro','crit','sheet','confirm'].map(id=>document.getElementById(id));
-const dbEl=document.getElementById('debrief');
-function setModal(){ const shut = OVS.some(o=>o.classList.contains('on')) || state.phase==='reveal';
-  labelsEl.inert=shut; document.getElementById('lock').inert=shut;
-  for(const o of OVS) o.inert=!o.classList.contains('on');   // a faded-out overlay is out of the tab order too
-  dbEl.inert=!dbEl.classList.contains('on'); }
-function ov(id,on){ document.getElementById(id).classList.toggle('on',on); setModal(); }
-function openCrit(c, from){
-  if(state.phase==='reveal') return;
-  CUR=c; lastFocus=from||null; audio.play('card-open',{ gain:.35 });
-  const cand=c.bias!==undefined;
-  document.getElementById('critKind').textContent = cand ? 'Your option' : 'Their criterion';
-  document.getElementById('critTitle').textContent = c.stamp;
-  document.getElementById('critQuote').innerHTML = cand ? '' : `<div class="quote">${c.said}</div>`;
-  const weightWord = ['','Light','Medium','Heavy'][c.w];
-  document.getElementById('critBody').innerHTML = cand
-    ? `<dt>What it measures</dt><dd>${c.measures}</dd>
-       <dt>How it sounds to them</dt><dd class="warn">${c.hears}</dd>
-       <dt>Weight</dt><dd>${weightWord} (${c.w} of 3)</dd>
-       <dt>Credibility change</dt><dd>${c.bias ? `−${c.bias*CONTENT.cred.perBias}` : 'None'}</dd>
-       <dt>What we know about ${CONTENT.them.name}</dt><dd>${c.theirs}</dd>`
-    : `<dt>Why it matters</dt><dd>${c.matters}</dd>
-       <dt>Weight</dt><dd>${weightWord} (${c.w} of 3)</dd>
-       <dt>What we know</dt><dd>${c.note}</dd>`;
-  const place=document.getElementById('critPlace');
-  const already=state.placed.includes(c.id), full=state.placed.length>=CONTENT.maxPlace;
-  place.style.display = cand && state.phase==='read' ? '' : 'none';
-  place.disabled = already || full;
-  place.textContent = already ? 'On your pan' : full ? 'Pan is full' : 'Add to pan';
-  ov('crit',true);
-  (place.style.display!=='none' && !place.disabled ? place : document.getElementById('critClose')).focus();
+const OVS=['intro','how','needsCard','itemCard','confirm','summary','results'].map($);
+let lastFocus=null;
+const isOn = id => $(id).classList.contains('on');
+// Every card is modal: nothing behind it takes a click or a Tab.
+function setModal(){
+  const modal=OVS.some(o=>o.classList.contains('on'));
+  for(const o of OVS) o.inert=!o.classList.contains('on');
+  topEl.inert=modal;
+  labelsEl.inert=modal || state.phase!=='play';
+  bottomEl.inert=modal || state.phase!=='play';
+  dockEl.inert=modal || state.phase!=='weigh';
 }
-function closeCrit(){ ov('crit',false); lastFocus?.focus(); CUR=null; }
-document.getElementById('critClose').addEventListener('click', closeCrit);
-document.getElementById('critPlace').addEventListener('click', ()=>{ const c=CUR; closeCrit(); if(c) placeCrit(c.id); });
+function ov(id, on){ $(id).classList.toggle('on', on); setModal(); }
+function openCard(id, from, focus){ lastFocus=from; ov(id,true); (focus || $(id).querySelector('button:not([disabled]):not([hidden])')).focus(); }
+function closeCard(id){ if(!isOn(id)) return; ov(id,false); if(lastFocus && !lastFocus.hidden) lastFocus.focus(); else $('signTitle').focus(); }
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', ()=>closeCard(b.closest('.ov').id)));
+const sr = text => { $('sr').textContent=text; };
 
-function openSheet(){ if(state.phase==='reveal') return; lastFocus=sheetBtn.el; audio.play('sheet',{ gain:.35 });
-  document.getElementById('sheetTitle').textContent = state.phase==='read' ? 'What we know' : 'Results';
-  document.getElementById('sheetLede').textContent = state.phase==='read'
-    ? 'This list is incomplete. If a criterion is missing, we know nothing about it.'
-    : 'Who won each criterion.';
-  const rows = state.phase==='read'
-    ? CONTENT.candidates.filter(c=>c.known).map(c=>`<tr><td class="st">${c.stamp}</td><td class="needs">${c.theirs}</td></tr>`).join('')
-      + CONTENT.stated.map(c=>`<tr><td class="st amber">${c.stamp}</td><td class="needs">${c.note}</td></tr>`).join('')
-    : rowsForResult();
-  document.getElementById('sheetTable').innerHTML=`<tr><th>Criterion</th><th>${state.phase==='read'?'What we know':'Won by'}</th>${state.phase==='read'?'':'<th>Weight</th>'}</tr>${rows}`;
-  ov('sheet',true); document.getElementById('sheetClose').focus(); }
-document.getElementById('sheetClose').addEventListener('click', ()=>{ ov('sheet',false); lastFocus?.focus(); });
+const ICON = {
+  met:`<svg viewBox="0 0 20 20" role="img" aria-label="Meets"><circle cx="10" cy="10" r="9" fill="#C99A4B"/><path d="M5.6 10.3l3 3 5.8-6.4" fill="none" stroke="#181410" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  no:`<svg viewBox="0 0 20 20" role="img" aria-label="Doesn't meet"><circle cx="10" cy="10" r="8.2" fill="none" stroke="#948a77" stroke-width="1.6"/><path d="M6.6 10h6.8" stroke="#948a77" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+};
+
+// Clicking a weight opens its card. A feature on the rack can be used, a used one removed; the rival's are read.
+let CARD=null, cardAt=0;
+const icAct=$('icAct');
+function openWeight(w){
+  if(state.phase!=='play') return;
+  CARD=w; cardAt=performance.now(); const R=ROUNDS[state.round];
+  const set=(id, text)=>{ const el=$(id); el.textContent=text||''; el.hidden=!text; };
+  set('icNew',''); set('icFull','');
+  if(w.kind==='rival'){
+    const r=RIVAL[w.id];
+    set('icTitle', r.name); set('icFrom', r.product || CONTENT.them.product); set('icDoes', r.pitch);
+    if(r.when) set('icNew', `${THEM} added this after you won ${NEED[r.when.won].name}.`);
+    icAct.hidden=true;
+  } else {
+    const it=ITEM[w.id];
+    set('icTitle', it.name); set('icFrom', it.product || CONTENT.us.product); set('icDoes', it.does);
+    const on=state.placed.includes(w.id), full=!on && state.placed.length>=R.slots;
+    icAct.hidden=false; icAct.textContent=on?'Remove':'Use'; icAct.disabled=full;
+    if(full) set('icFull', `You've used ${R.slots} of ${R.slots}.`);
+  }
+  sfx('card-open', .35);
+  openCard('itemCard', w.btn);
+}
+icAct.addEventListener('click', ()=>{ const w=CARD; closeCard('itemCard'); if(state.placed.includes(w.id)) remove(w.id); else place(w.id); });
+
+// The meeting notes: what each person in the meeting said, in order. No need names and no priorities;
+// the learner reads the client's words and works out what matters.
+function openNeeds(atStart){
+  const ri=state.round, R=ROUNDS[ri];
+  $('ndTitle').textContent=R.name;
+  $('ndSub').textContent=N>1 ? `Meeting ${ri+1} of ${N}. Notes from the meeting.` : 'Notes from the meeting.';
+  $('ndLog').innerHTML=R.needs.map(n=>`<p><b>${esc(n.who)}</b><span>${esc(n.said)}</span></p>`).join('');
+  $('ndNew').innerHTML=sc.rivalsIn(ri, state.won).filter(r=>r.when)
+    .map(r=>`<b>New from ${esc(THEM)}:</b> ${esc(r.name)}, because you won ${esc(NEED[r.when.won].name)}.`).join(' ');
+  const go=$('ndGo'); go.textContent=atStart?'Start meeting':'Close'; go.className=atStart?'btn brass big':'btn';
+  sfx('sheet', .6);
+  openCard('needsCard', atStart?null:$('btnNeeds'), go);
+}
+$('ndGo').addEventListener('click', ()=>{ if(state.phase==='needs') startMeeting(); else closeCard('needsCard'); });
+$('btnNeeds').addEventListener('click', ()=>openNeeds(false));
+
 addEventListener('keydown', e=>{ if(e.key!=='Escape') return;
-  if(CUR) closeCrit(); ov('sheet',false); ov('confirm',false);
-  if(document.getElementById('intro').classList.contains('on')) startGame(); });
+  if(isOn('how')) return closeCard('how');
+  if(isOn('itemCard')) return closeCard('itemCard');
+  if(isOn('confirm')) return closeCard('confirm');
+  if(isOn('needsCard')) return $('ndGo').click();
+  if(isOn('intro')) return $('start').click(); });
+// a mouse click does not leave a focus ring behind; the keyboard brings it back
+addEventListener('pointerdown', ()=>document.body.classList.add('mouse'), true);
+addEventListener('keydown', ()=>document.body.classList.remove('mouse'), true);
 
 /*═══════════════════════════════════════════════════════════════════════════
-  PLACEMENT
+  A MEETING — the rival's features drop onto the left; the learner places
 ═══════════════════════════════════════════════════════════════════════════*/
-document.getElementById('stMax').textContent=CONTENT.maxPlace;
+const weighBtn=$('weigh');
 function updateHud(){
-  const cred=credFor(state.placed);
-  document.getElementById('stCount').textContent=state.placed.length;
-  const el=document.getElementById('stCred'); el.innerHTML=`<span>${cred}</span> / 100`;
-  el.classList.toggle('low', cred<CONTENT.cred.threshold);
-  CRED.target=credAngle(cred);
-  document.getElementById('lock').disabled = state.phase!=='read' || state.placed.length===0;
-  for(const c of CONTENT.candidates){ const b=DECK_R.btns[c.id];
-    b.dataset.on = state.struck.includes(c.id) ? '2' : state.placed.includes(c.id) ? '1' : ''; }
+  const R=ROUNDS[state.round];
+  $('signTitle').textContent=CLIENT;
+  $('signSub').textContent=N>1 ? `${R.name}, ${state.round+1} of ${N}` : R.name;
+  $('status').innerHTML=`<b>${state.placed.length}</b> of ${R.slots} used`;
+  weighBtn.disabled = state.phase!=='play' || !state.placed.length;
+  bottomEl.classList.toggle('off', state.phase!=='play' && state.phase!=='needs' && state.phase!=='intro');
+  for(const w of WL) w.btn.setAttribute('aria-label', ariaFor(w));
+  measure();
 }
-function placeCrit(id){
-  if(state.phase!=='read' || state.placed.includes(id) || state.placed.length>=CONTENT.maxPlace) return;
-  state.placed.push(id); PAN.right.items.push(id);
-  const w=W[id]; w.place='right'; fly(w,'place');
-  const cred=credFor(state.placed);
-  toast(`${w.c.stamp} added`, SC.x+SC.arm, PAN.right.g.position.y+.95, 0, cred<CONTENT.cred.threshold?'bad':'ok');
-  if(cred<CONTENT.cred.threshold) toast(`Credibility below ${CONTENT.cred.threshold}`, CRED.x, CRED.pivotY+.5, CRED.z, 'bad');
-  updateHud(); save();
-  const left=CONTENT.maxPlace-state.placed.length;
-  document.getElementById('signsub').textContent = left ? `Add up to ${left} more, or click Lock scorecard.` : 'Click Lock scorecard.';
-}
-document.getElementById('lock').addEventListener('click', ()=>{
-  if(state.phase!=='read' || !state.placed.length) return;
-  const cred=credFor(state.placed), risk=struckBy(state.placed);
-  document.getElementById('cfBody').innerHTML =
-    `<tr><td>Your criteria</td><td>${state.placed.map(id=>CRIT[id].stamp).join(', ')}</td></tr>`
-    + `<tr><td>Credibility</td><td><b>${cred}</b> of 100</td></tr>`
-    + `<tr><td>Struck</td><td>${risk.length ? `<span class="bad">${risk.length}</span> (credibility is below ${CONTENT.cred.threshold})` : 'None'}</td></tr>`;
-  ov('confirm',true); document.getElementById('cfYes').focus();
-});
-document.getElementById('cfNo').addEventListener('click', ()=>{ ov('confirm',false); document.getElementById('lock').focus(); });
-document.getElementById('cfYes').addEventListener('click', ()=>{ ov('confirm',false); audio.play('lock'); reveal(); });
-
-/*═══════════════════════════════════════════════════════════════════════════
-  3D PICKING — click a weight or the sheet, same cards as the buttons
-═══════════════════════════════════════════════════════════════════════════*/
-const ray=new THREE.Raycaster(), ptr=new THREE.Vector2(); let hover=null;
-function pick(e){ ptr.set((e.clientX/innerWidth)*2-1, -(e.clientY/innerHeight)*2+1); ray.setFromCamera(ptr,camera);
-  return ray.intersectObjects(pickables,false)[0]?.object||null; }
-renderer.domElement.addEventListener('pointermove', e=>{ const o=pick(e);
-  if(o!==hover){ hover=o; renderer.domElement.style.cursor = o?'pointer':'default'; } });
-renderer.domElement.addEventListener('pointerdown', e=>{ const o=pick(e); if(!o) return;
-  if(o.userData.sheet) openSheet(); else openCrit(CRIT[o.userData.crit], DECK_R.btns[o.userData.crit] || DECK_L.btns[o.userData.crit]); });
-
-/*═══════════════════════════════════════════════════════════════════════════
-  REVEAL — strikes, then the bake-off runs and every weight moves to a side
-═══════════════════════════════════════════════════════════════════════════*/
-function rowsForResult(){
-  const r=state.result; if(!r) return '';
-  return r.order.map(c=>{
-    const struck=state.struck.includes(c.id);
-    const who = struck ? '<span class="bad">Struck</span>' : c.takes==='us' ? `<span class="ok">${CONTENT.us.name}</span>`
-      : c.takes==='them' ? `<span class="bad">${CONTENT.them.name}</span>` : '<span class="amber">Tie</span>';
-    return `<tr class="${c.bias!==undefined?'you':''}"><td class="st">${c.stamp}</td><td>${who}</td><td>${c.w}</td></tr>`;
-  }).join('');
-}
-/* Reveal steps run on the animation clock, not the wall clock, so a slow frame rate never lets a step start before the last weight lands. */
-const LATER=[]; let gameT=0;
-function later(ms, fn){ LATER.push({ at:gameT+ms/1000, fn }); }
-function reveal(){
-  if(state.phase!=='read') return; state.phase='reveal'; save(); setModal();
-  document.getElementById('lock').disabled=true;
-  const res=outcome(state.placed); state.struck=res.struck;
+function setupRound(ri){
+  // everything from the last meeting leaves the table
+  for(const w of WL){
+    w.flight=null; if(w.g.parent!==scene) scene.attach(w.g);
+    w.g.visible=false; w.place='hidden'; w.fallV=0; w.glow=0; w.g.quaternion.identity(); w.g.scale.setScalar(1); setDim(w,false);
+  }
+  for(const P of Object.values(PLAT)) P.cols=[[],[]];
+  OFF.them=[]; OFF.us=[];
+  state.round=ri; state.placed=[];
+  ROUNDS[ri].items.forEach((it,i)=>{ const w=W[it.id]; w.place='rack'; w.slot=i; w.g.visible=true; w.g.position.copy(targetPos(w)); });
   updateHud();
-  document.getElementById('signsub').textContent='The bake-off is running.';
-  document.getElementById('sr').textContent='Scorecard locked. The bake-off is running.';
-  let t=600;
-  // 1. strikes
-  for(const id of res.struck){ later(t, ()=>{
-    const w=W[id]; PAN.right.items.splice(PAN.right.items.indexOf(id),1); TABLE_SLOT.items.push(id);
-    w.place='table'; w.tag.visible=true; fly(w,'strike');
-    toast(`${w.c.stamp} struck`, TABLE_SLOT.x-(TABLE_SLOT.items.length-1)*1.02, 1.0+(TABLE_SLOT.items.length-1)*.34, TABLE_SLOT.z, 'bad');
-  }); t+=900; }
-  // 2. the sheet unrolls
-  later(t, ()=>{ SHEET.target=1; SHEET.list=[]; drawSheet(); audio.play('unroll'); }); t+=900;
-  // 3. criterion by criterion, each weight moves to whoever took it
-  const order=[...CONTENT.stated, ...res.live.map(id=>CRIT[id])];
-  state.result={ ...res, order };
-  order.forEach((c,i)=>{ later(t+i*820, ()=>{
-    const w=W[c.id], from=w.place; const src = from==='left'?PAN.left.items : from==='right'?PAN.right.items : CENTRE.items;
-    src.splice(src.indexOf(c.id),1);
-    w.place = c.takes==='us' ? 'right' : c.takes==='them' ? 'left' : 'centre';
-    (w.place==='centre'?CENTRE.items:PAN[w.place].items).push(c.id);
-    fly(w, c.takes==='us'?'take-us':c.takes==='them'?'take-them':'take-even');
-    SHEET.list.push({ stamp:c.stamp, takes:c.takes }); drawSheet();
-    toast(`${c.stamp}: ${c.takes==='us'?CONTENT.us.short:c.takes==='them'?CONTENT.them.short:'tie'}`,
-      SC.x, SC.pivotY+1.15, 0, c.takes==='us'?'ok':c.takes==='them'?'bad':'');
-  }); });
-  later(t+order.length*820+1500, finish);
+}
+function startMeeting(){
+  ov('needsCard', false); state.phase='play'; meetingAt=performance.now(); setModal(); updateHud(); save();
+  // the rival's features drop on, the heaviest at the bottom and any counter-move last
+  const ri=state.round, list=sc.rivalsIn(ri, state.won).map((r,i)=>({ r, i }));
+  list.sort((a,b)=>(!!a.r.when - !!b.r.when) || (NEED[b.r.need].priority - NEED[a.r.need].priority) || a.i-b.i);
+  list.forEach(({r},k)=>later(250+k*320, ()=>{
+    const w=W[r.id]; stack(PLAT.them, w); w.place='them'; w.g.visible=true;
+    const tp=targetPos(w), up=new THREE.Vector3(0,3.4,0); w.g.position.copy(tp).add(up);
+    fly(w, { carry:.0001, approach:up, dropT:.55, sound:'place', gain:.45 });
+  }));
+  if(!state.restoring) $('signTitle').focus();
+}
+function place(id){
+  const R=ROUNDS[state.round], w=W[id];
+  if(state.phase!=='play' || state.placed.includes(id) || state.placed.length>=R.slots || w.place!=='rack') return;
+  state.placed.push(id); stack(PLAT.us, w); w.place='us'; fly(w, { sound:'place' }); recordUse(w, 'use');
+  sr(`${w.name} is on the scale. ${state.placed.length} of ${R.slots}.`); updateHud(); save();
+}
+function remove(id){
+  const w=W[id]; if(state.phase!=='play' || !state.placed.includes(id)) return;
+  state.placed.splice(state.placed.indexOf(id),1); unstack(w); w.place='rack'; fly(w, { sound:'place' }); recordUse(w, 'leave');
+  sr(`${w.name} back on the rack.`); updateHud(); save();
+}
+weighBtn.addEventListener('click', ()=>{
+  if(state.phase!=='play' || !state.placed.length) return;
+  const n=state.placed.length, NUM=['','one','two','three','four'];
+  $('cfTitle').textContent = n===1 ? 'Present this one?' : `Present these ${NUM[n]}?`;
+  $('cfList').innerHTML=state.placed.map(id=>`<li>${esc(ITEM[id].name)}</li>`).join('');
+  $('cfBody').textContent=`The committee checks ${n===1?'it':'them'} against ${THEM}, one need at a time. You can't change ${n===1?'it':'them'} after this.`;
+  openCard('confirm', weighBtn, $('cfYes'));
+});
+$('cfNo').addEventListener('click', ()=>closeCard('confirm'));
+$('cfYes').addEventListener('click', ()=>{ ov('confirm',false); sfx('lock'); weigh(); });
+
+/*═══════════════════════════════════════════════════════════════════════════
+  WEIGH — the committee goes need by need, then the features nobody asked for
+═══════════════════════════════════════════════════════════════════════════*/
+const LATER=[]; let gameT=0;
+// Skip runs the same simulation faster: several normal-size steps per frame, never one big step.
+let timeScale=1;
+function later(ms, fn){ if(state.restoring) fn(); else LATER.push({ at:gameT+ms/1000, fn }); }
+const skipBtn=$('skip');
+skipBtn.addEventListener('click', ()=>{ if(state.phase!=='weigh') return; timeScale=12; skipBtn.disabled=true; sr('Skipping to the end of the meeting.'); });
+const dk={ title:$('dkTitle'), pri:$('dkPri'), who:$('dkWho'), rows:$('dkRows'), them:$('dkThem'), us:$('dkUs'), note:$('dkNote'), table:$('dkTable') };
+$('dkHThem').textContent=THEM; $('dkHUs').textContent=US;
+function focusOn(ids){ const keep=new Set(ids); for(const w of WL){ const on=keep.has(w.id); w.btn.classList.toggle('on', on); if(w.g.visible) setDim(w, !on); } }
+function renderReqs(x){
+  dk.rows.innerHTML=x.need.reqs.map(q=>`<tr><td>${esc(q.text)}</td><td class="ic">${ICON[x.them.includes(q.id)?'met':'no']}</td><td class="ic">${ICON[x.us.includes(q.id)?'met':'no']}</td></tr>`).join('');
+  dk.them.textContent=x.them.length; dk.us.textContent=x.us.length;
+}
+const resultWord = x => x.winner ? `${x.winner==='us'?US:THEM} +${x.points}` : !x.us.length && !x.them.length ? 'Nobody' : 'Tie';
+
+function weigh(){
+  if(state.phase!=='play' || !state.placed.length) return;
+  const ri=state.round, o=sc.roundOutcome(ri, state.placed, state.won);
+  // of the tied best sets, the one the learner presented if it is one
+  if(!state.restoring){ const best=bestSets(ri), mine=best.find(ids=>ids.length===state.placed.length && ids.every(id=>state.placed.includes(id)));
+    lms.record({ id:`${ROUNDS[ri].id}.present`, description:`What to present at ${ROUNDS[ri].name}, up to ${ROUNDS[ri].slots} features`,
+      response:state.placed, correct:mine || best[0], latencyMs:performance.now()-meetingAt }); }
+  state.phase='weigh'; state.outcomes[ri]=o; state.picks[ri]=[...state.placed];
+  FR.uT=1; if(state.restoring) FR.u=1;
+  dockEl.classList.add('on'); skipBtn.disabled=false; setModal(); updateHud(); save();
+  if(!state.restoring) skipBtn.focus();
+  let t=600; const at=(ms, fn)=>{ t+=ms; later(t, fn); };
+  o.needs.forEach((x,k)=>{
+    const busy = x.rivals.length || x.feats.length;
+    at(k?300:0, ()=>{
+      dk.title.textContent=`“${x.need.said}”`; dk.pri.textContent=`Need ${k+1} of ${o.needs.length}`; dk.who.textContent=x.need.who;
+      dk.table.hidden=false; renderReqs(x); dk.note.innerHTML=''; dk.them.textContent=0; dk.us.textContent=0;
+      dk.table.classList.remove('w-us','w-them'); winLight(null); for(const w of WL) w.win=false;
+      focusOn([...x.rivals, ...x.feats]);
+      sr(`${x.need.who}: ${x.need.said} ${THEM} meets ${x.them.length} of ${x.need.reqs.length}, ${US} meets ${x.us.length}.`);
+    });
+    let cT=0, cU=0;
+    x.need.reqs.forEach((q,j)=> at(j?650:900, ()=>{
+      dk.rows.children[j].classList.add('on');
+      if(x.them.includes(q.id)) dk.them.textContent=++cT;
+      if(x.us.includes(q.id)) dk.us.textContent=++cU;
+      sfx('place', .35);
+    }));
+    at(600, ()=>{
+      if(x.winner){ dk.table.classList.add('w-'+x.winner); winLight(x.winner);
+        for(const id of x.winner==='us'?x.feats:x.rivals) W[id].win=true;
+        sfx(x.winner==='us'?'take-us':'take-them', .8); }
+      else { dk.note.innerHTML='<p class="tie">Tie</p>'; sfx('take-even', .7); }
+    });
+    if(busy) at(1000, ()=>{
+      const out = x.winner==='us' ? x.rivals : x.winner==='them' ? x.feats : [...x.rivals, ...x.feats];
+      for(const id of out) takeOff(W[id]);
+      if(out.length) later(750, ()=>sfx('lock', .9));
+    });
+    at(busy?1700:900, ()=>{});
+  });
+  for(const id of o.padding){
+    const it=ITEM[id];
+    at(300, ()=>{ dk.table.classList.remove('w-us','w-them'); winLight(null); for(const w of WL) w.win=false; dk.title.textContent=it.name; dk.pri.textContent='Not asked for'; dk.table.hidden=true;
+      dk.note.innerHTML=`<p>Nobody asked for this.</p>`; dk.who.textContent='';
+      focusOn([id]); sr(`${it.name}: nobody asked for this. It comes off.`); });
+    at(900, ()=>{ takeOff(W[id]); sfx('take-them', .6); });
+    at(1100, ()=>{});
+  }
+  at(500, showSummary);
 }
 
 /*═══════════════════════════════════════════════════════════════════════════
-  SCORE, DEBRIEF, SCORM
+  BETWEEN MEETINGS, RESULTS, SCORM
 ═══════════════════════════════════════════════════════════════════════════*/
 const lms=connectScorm();
-function save(){ if(!lms.connected) return; lms.save(JSON.stringify({ v:1, contentVersion:CONTENT.version, placed:state.placed, locked:state.phase!=='read' })); }
-function finish(){
-  if(state.finished) return;
-  if(Object.values(W).some(w=>w.flight)) return later(250, finish);   // the result waits for the last weight to land
-  state.finished=true; state.phase='done';
-  const r=state.result; lms.finish({ score:r.score, max:100, passed:r.score>=70 });
-  const won=r.us>r.them; audio.play(won?'result-won':'result-lost');
-  const nUs=CONTENT.us.name, nThem=CONTENT.them.name, passed=r.score>=70, row=(k,v)=>`<tr><td>${k}</td><td>${v}</td></tr>`;
-  document.getElementById('dbTitle').textContent = won ? `${nUs} wins` : r.us===r.them ? 'Tie' : `${nThem} wins`;
-  document.getElementById('dbSummary').innerHTML =
-      row('Score', `<b>${r.score}</b> of 100 · <span class="${passed?'ok':'bad'}">${passed?'Passed':'Not passed'}</span> (pass is 70)`)
-    + row('Bake-off', `${nUs} ${r.us}, ${nThem} ${r.them} · <b>${r.bake}</b> of 50 points`)
-    + row('Credibility', `${r.cred} of 100 · <b>${r.credScore}</b> of 50 points`)
-    + row('Struck', r.struck.length ? `<span class="bad">${r.struck.length}</span> of your ${state.placed.length}` : 'None');
-  document.getElementById('dbLook').textContent = 'Each weight now sits on the pan of the side that won it. Ties sit on the middle rail.'
-    + (r.struck.length ? ' Red tags mark struck weights. They count for neither side.' : '');
-  document.getElementById('dbRows').innerHTML=`<tr><th>Criterion</th><th>Won by</th><th>Weight</th></tr>${rowsForResult()}`;
-  if(r.struck.length){ document.getElementById('dbStruckH').hidden=false; const t=document.getElementById('dbStruck'); t.hidden=false;
-    t.innerHTML=`<tr><th>Criterion</th><th>How it sounded to them</th></tr>`+r.struck.map(id=>`<tr><td class="st bad">${CRIT[id].stamp}</td><td>${CRIT[id].hears}</td></tr>`).join(''); }
-  document.getElementById('dbSay').innerHTML = state.placed.length
-    ? `<tr><th>Criterion</th><th>What to say</th></tr>` + state.placed.map(id=>`<tr><td class="st">${CRIT[id].stamp}</td><td>${CRIT[id].say}</td></tr>`).join('')
-    : row('Nothing added', 'The bake-off ran only on their four criteria.');
-  const matched = BEST.set.length===state.placed.length && BEST.set.every(id=>state.placed.includes(id));
-  document.getElementById('dbBest').innerHTML =
-      row('Criteria', BEST.set.map(id=>CRIT[id].stamp).join(', ') + (matched ? ' <span class="ok">(yours)</span>' : ''))
-    + row('Score', `<b>${BEST.score}</b> of 100 · bake-off ${BEST.bake}, credibility ${BEST.credScore}`);
-  document.getElementById('signsub').textContent='Bake-off finished.';
-  document.getElementById('lock').hidden=true;
-  for(const t of TOASTS.splice(0)) t.remove();      // the result is up; stale narration goes
-  dbEl.classList.add('on'); setModal(); dbEl.scrollTop=0; dbEl.focus({preventScroll:true});
-  fitCamera();
+function save(){ if(!lms.connected || state.restoring) return;
+  lms.save(JSON.stringify({ v:4, contentVersion:CONTENT.version, round:state.round, picks:state.picks.slice(0,state.round),
+    placed:state.placed, weighed:state.phase==='weigh' || state.phase==='summary' }));
+  // how far through the deal: each meeting is an equal share, half of it for the picks, then the check
+  const R=ROUNDS[state.round], p=state.phase, part=p==='play' ? .5*state.placed.length/R.slots : p==='weigh' ? .75 : p==='summary' ? 1 : 0;
+  const where=p==='play' ? `${state.placed.length} of ${R.slots} used` : p==='weigh' ? 'the committee is checking' : p==='summary' ? 'checked' : 'meeting notes';
+  lms.progress({ location:`${R.name}: ${where}`, measure:(state.round+part)/N });
 }
-document.getElementById('dbHide').addEventListener('click', ()=>{ dbEl.classList.remove('on'); setModal(); fitCamera(); const b=document.getElementById('dbShow'); b.hidden=false; b.focus(); });
-document.getElementById('dbShow').addEventListener('click', ()=>{ dbEl.classList.add('on'); setModal(); fitCamera(); document.getElementById('dbShow').hidden=true; document.getElementById('dbHide').focus(); });
-document.getElementById('startOver').addEventListener('click', ()=>{ lms.save(''); location.reload(); });
+/* Decision records. The right picks for a meeting are every set of features that ends the deal best from the needs
+   already won (later meetings played as well as they can be). Each Use and Remove is recorded against them, and so is
+   what the learner presents. A restored save records nothing: those decisions were recorded when they were made. */
+let meetingAt=performance.now();
+const BEST={};
+function bestSets(ri){
+  const key=ri+':'+[...state.won].sort().join(',');
+  if(BEST[key]) return BEST[key];
+  const end=ids=>{ const o=sc.roundOutcome(ri, ids, state.won), w=new Set(state.won); o.won.forEach(x=>w.add(x));
+    return o.us-o.them + (ri<N-1 ? sc.bestFrom(ri+1, w).margin : 0); };
+  const sets=sc.choices(ri).map(ids=>({ ids, m:end(ids) })), top=Math.max(...sets.map(x=>x.m));
+  return BEST[key]=sets.filter(x=>x.m===top).map(x=>x.ids);
+}
+function recordUse(w, response){
+  if(state.restoring) return;
+  const R=ROUNDS[state.round], right=bestSets(state.round).some(ids=>ids.includes(w.id));
+  lms.record({ id:`${R.id}.${w.id}`, description:`Use ${w.name} at ${R.name}?`, response, correct:right ? 'use' : 'leave',
+    latencyMs:performance.now()-(CARD===w ? cardAt : meetingAt) });
+}
+function tallyTable(o, withPoints){
+  const head=`<caption>Requirements each side meets</caption><thead><tr><th scope="col">Need</th><th scope="col">${esc(THEM)}</th><th scope="col">${esc(US)}</th>${withPoints?'<th scope="col">Points</th>':''}</tr></thead>`;
+  const cell=(x, side)=> x.winner===side && !withPoints ? `<b>${x[side].length} +${x.points}</b>` : `${x[side].length}`;
+  const rows=o.needs.map(x=>`<tr><td>${esc(x.need.name)}</td><td>${cell(x,'them')}</td><td>${cell(x,'us')}</td>${withPoints?`<td>${esc(resultWord(x))}</td>`:''}</tr>`);
+  for(const id of o.padding) rows.push(`<tr><td>${esc(ITEM[id].name)}, not asked for</td><td></td><td></td>${withPoints?'<td></td>':''}</tr>`);
+  return head+'<tbody>'+rows.join('')+'</tbody>';
+}
+function showSummary(){
+  for(const w of WL) settle(w);
+  timeScale=1; state.phase='summary'; dockEl.classList.remove('on'); focusOn([]); winLight(null); for(const w of WL){ setDim(w,false); w.win=false; }
+  const ri=state.round, R=ROUNDS[ri], o=state.outcomes[ri], last=ri===N-1;
+  // one meeting: the results follow the weigh-in, with no summary in between
+  if(N===1){ o.won.forEach(x=>state.won.add(x)); updateHud(); save(); showResults(); return; }
+  shown.us+=o.us; shown.them+=o.them;
+  const wonNow=new Set([...state.won, ...o.won]);
+  $('smTitle').textContent=R.name;
+  $('smScore').innerHTML=`This meeting: <b>${esc(US)} ${o.us} · ${esc(THEM)} ${o.them}</b>`;
+  $('smTable').innerHTML=tallyTable(o, true);
+  const notes=[];
+  if(!last) for(const r of sc.rivalsIn(ri+1, wonNow).filter(r=>r.when))
+    notes.push(`<p><b>Next meeting:</b> ${esc(THEM)} adds ${esc(r.name)}, because you won ${esc(NEED[r.when.won].name)}.</p>`);
+  $('smNotes').innerHTML=notes.join('');
+  $('smDeal').innerHTML=`Deal so far: <b>${esc(US)} ${shown.us} · ${esc(THEM)} ${shown.them}</b>`;
+  $('smGo').textContent=last?'Results':'Next meeting';
+  sfx('unroll', .6); updateHud(); save();
+  lastFocus=null; ov('summary', true); $('smGo').focus();
+}
+$('smGo').addEventListener('click', ()=>{
+  const ri=state.round, o=state.outcomes[ri];
+  o.won.forEach(x=>state.won.add(x));
+  if(ri===N-1){ ov('summary',false); showResults(); return; }
+  ov('summary',false); setupRound(ri+1); FR.uT=0; state.phase='needs'; setModal(); save(); openNeeds(true);
+});
+
+let RS=[];
+function showTab(ri, focus=false){
+  $('rsTabs').querySelectorAll('[role=tab]').forEach((t,k)=>{ t.setAttribute('aria-selected', String(k===ri)); t.tabIndex=k===ri?0:-1; });
+  const panel=$('rsPanel'); panel.setAttribute('aria-labelledby', `rsTab${ri}`); panel.innerHTML=RS[ri].html; $('rsPicks').innerHTML=RS[ri].picks;
+  if(focus) $(`rsTab${ri}`).focus();
+}
+$('rsTabs').addEventListener('keydown', e=>{
+  const k=RS.findIndex((_,i)=>$(`rsTab${i}`).getAttribute('aria-selected')==='true'), n=RS.length;
+  const to = e.key==='ArrowRight' ? (k+1)%n : e.key==='ArrowLeft' ? (k-1+n)%n : e.key==='Home' ? 0 : e.key==='End' ? n-1 : -1;
+  if(to<0) return; e.preventDefault(); showTab(to, true);
+});
+// What is left on each pan is that side's total: a weight's size is its need's priority, and the losing side's
+// weight comes off. Each side's column lists the needs it kept a weight for; ties and features nobody asked for are muted.
+function sidesHtml(o){
+  const q=x=>`<span>${esc(x.need.name)}</span>`, said=x=>`<i>“${esc(x.need.quote)}”</i>`;
+  const won=side=>o.needs.filter(x=>x.winner===side).map(x=>{ const other=side==='us'?'them':'us';
+    return `<li>${q(x)}<span class="m">${x[side].length} to ${x[other].length}</span><span class="p">+${x.points}</span>${said(x)}</li>`; });
+  const ties=o.needs.filter(x=>!x.winner).map(x=>`<li class="minus">${q(x)}<span class="m">${x.us.length} to ${x.them.length}</span><span class="p">Tie</span>${said(x)}</li>`);
+  const extra=o.padding.map(id=>`<li class="minus"><span>${esc(ITEM[id].name)}</span><span class="m"></span><span class="p"></span><i>Nobody asked for this.</i></li>`);
+  const col=(side, name, total, rows)=>`<div class="${side}"><div class="top"><b>${esc(name)}</b><span class="n">${total}</span></div><ul>${rows.join('')}</ul></div>`;
+  return `<div class="sides">${col('us', US, o.us, [...won('us'), ...ties, ...extra])}${col('them', THEM, o.them, won('them'))}</div>`;
+}
+function showResults(){
+  state.phase='done'; state.round=N; setModal();
+  const deal=sc.dealOutcome(state.picks), best=sc.bestDeal(), worst=sc.worstDeal();
+  if(!state.finished){ state.finished=true;
+    lms.save(JSON.stringify({ v:4, contentVersion:CONTENT.version, round:N, picks:state.picks, placed:[], weighed:false }));
+    lms.finish({ score:sc.lmsScore(deal.margin, best.margin, worst.margin), max:100, passed:deal.won });
+    lms.progress({ location:'Results', measure:1 });
+    if(!state.restoring) audio.finish(deal.won?'victory':'defeat'); }
+  $('rsTitle').textContent = deal.us>deal.them ? `${CLIENT} picks ${US}` : deal.us<deal.them ? `${CLIENT} picks ${THEM}` : `${CLIENT} can't decide`;
+  $('rsSub').textContent = deal.us>deal.them ? `Your side of the scale is heavier, ${deal.us} to ${deal.them}.`
+    : deal.us<deal.them ? `${THEM}'s side of the scale is heavier, ${deal.them} to ${deal.us}.` : `The scale is level, ${deal.us} to ${deal.them}.`;
+  // one tab per meeting; it opens on the first meeting where a better pick was there
+  const won=new Set(), names=ids=>listOf(ids.map(id=>ITEM[id].name));
+  RS = deal.rounds.map((o,ri)=>{
+    const before=new Set(won), here=sc.bestFrom(ri, before), after=new Set([...won, ...o.won]);
+    const mine=(o.us-o.them) + (ri<N-1 ? sc.bestFrom(ri+1, after).margin : 0);
+    o.won.forEach(x=>won.add(x));
+    const joined=sc.rivalsIn(ri, before).filter(r=>r.when).map(r=>` ${esc(THEM)} added ${esc(r.name)} here, because you won ${esc(NEED[r.when.won].name)}.`);
+    const picks=`<b>You used</b> ${esc(names(state.picks[ri]))}.<br>`
+      + (mine>=here.margin ? `Your picks were the best${N>1?' for this meeting':''}.` : `<b>Best pick</b> ${esc(names(here.picks[0]))}.`) + joined.join('');
+    return { o, best:mine>=here.margin, html:sidesHtml(o), picks };
+  });
+  // one meeting has one panel and no tabs
+  const tabs=$('rsTabs'); tabs.style.setProperty('--rc', N); tabs.hidden=N===1;
+  if(N===1){ const panel=$('rsPanel'); panel.removeAttribute('role'); panel.removeAttribute('tabindex'); panel.innerHTML=RS[0].html; $('rsPicks').innerHTML=RS[0].picks; ov('results', true); $('rsTitle').focus(); return; }
+  tabs.innerHTML=RS.map((r,ri)=>`<button type="button" role="tab" class="btn tab" id="rsTab${ri}" aria-controls="rsPanel">`
+    + `<b>${esc(ROUNDS[ri].name)}</b><span>${esc(US)} ${r.o.us}, ${esc(THEM)} ${r.o.them}</span></button>`).join('');
+  tabs.querySelectorAll('[role=tab]').forEach((t,ri)=>t.addEventListener('click', ()=>showTab(ri)));
+  showTab(Math.max(0, RS.findIndex(r=>!r.best)));
+  ov('results', true); $('rsTitle').focus();
+}
+// the reload keeps the address as it is, query string and all; lms.reload() first keeps the LMS session open across it
+$('startOver').addEventListener('click', ()=>{ lms.save(''); lms.reload(); location.reload(); });
+
+function startGame(){ ov('intro',false); audio.reset(); audio.bed('music'); state.phase='needs'; openNeeds(true); }
+$('start').addEventListener('click', startGame);
+// the briefing memo, and How to play: one plain line per control
+$('inTitle').textContent=CLIENT; $('inFrom').textContent=CONTENT.memo.from; $('inAbout').textContent=CONTENT.memo.about;
+$('inBody').innerHTML=CONTENT.situation.map(t=>`<p>${esc(t)}</p>`).join('');
+$('howList').innerHTML=[
+  'Click a weight to read its card.',
+  `Use puts a feature on your pan. Remove takes it off. ${N>1?'Each meeting says how many you can use.':`You can use ${ROUNDS[0].slots}.`}`,
+  'Meeting notes shows what the client said.',
+  'Present sends your picks to the committee.',
+  `The committee checks one need at a time. The side that meets less of it loses its weight. A tie takes both off, and so does a feature nobody asked for.`,
+  N>1 ? `After the last meeting, the heavier pan wins.` : 'The heavier pan wins.',
+].map(t=>`<li>${esc(t)}</li>`).join('');
+$('howBtn').addEventListener('click', ()=>{ sfx('card-open', .35); openCard('how', $('howBtn')); });
+
+setupRound(0); layout(); setModal();
 (function restore(){ const raw=lms.resumeData(); if(!raw) return; try{ const s=JSON.parse(raw);
-  if(s.v!==1 || s.contentVersion!==CONTENT.version || !s.placed?.length) return;
-  ov('intro',false);
-  state.restoring=true; for(const id of s.placed) placeCrit(id); state.restoring=false;
-  if(s.locked) reveal(); }catch(_){} })();
-function startGame(){ ov('intro',false); sheetBtn.el.focus(); }
-document.getElementById('start').addEventListener('click', startGame);
-setModal(); document.getElementById('start').focus();
-document.getElementById('introSituation').textContent =
-  `${CONTENT.industry[0].toUpperCase()}${CONTENT.industry.slice(1)} is choosing a new ${CONTENT.category}: ${CONTENT.us.name} or ${CONTENT.them.name}. They asked you what the bake-off should test. `
-  + `If your credibility drops below ${CONTENT.cred.threshold}, they strike criteria that sound like a sales pitch.`;
-document.getElementById('introGoal').textContent = `Add criteria that help ${CONTENT.us.name} win the bake-off, and keep their trust.`;
-document.getElementById('introSteps').innerHTML = [
-  'Click a name under <b>Their criteria</b> or <b>Your options</b> to read its card.',
-  `Click <b>Bake-off sheet</b> to see what we know about ${CONTENT.them.name}.`,
-  `Click <b>Add to pan</b> on up to ${['','one','two','three','four','five'][CONTENT.maxPlace]||CONTENT.maxPlace} options. You cannot take one back.`,
-  'Click <b>Lock scorecard</b> to run the bake-off.',
-].map(t=>`<li>${t}</li>`).join('');
+  if(s.v!==4 || s.contentVersion!==CONTENT.version) return;   // an older save starts a fresh run
+  state.restoring=true; ov('intro',false);
+  for(let ri=0; ri<Math.min(s.round, N); ri++){ const o=sc.roundOutcome(ri, s.picks[ri]||[], state.won);
+    state.picks[ri]=s.picks[ri]||[]; state.outcomes[ri]=o; o.won.forEach(x=>state.won.add(x)); shown.us+=o.us; shown.them+=o.them; }
+  if(s.round>=N){ showResults(); }
+  else { setupRound(s.round); startMeeting(); for(const id of s.placed||[]) place(id); if(s.weighed) weigh(); else audio.bed('music'); }
+}catch(e){ console.warn('[scale] the saved game could not be restored', e); } finally { state.restoring=false; } })();
+updateHud();
+if(isOn('intro')) $('start').focus();
 
 /*═══════════════════════════════════════════════════════════════════════════
   FRAME
 ═══════════════════════════════════════════════════════════════════════════*/
-const clock=new THREE.Clock();
-let beamAngle=0;
-function massOf(list){ return list.reduce((n,id)=>n+(W[id].flight?0:CRIT[id].w), 0); }   // a weight counts once it has landed
-function frame(){
-  const dt=Math.min(clock.getDelta(),.05), t=clock.elapsedTime;
-  gameT+=dt; for(const x of LATER.filter(x=>x.at<=gameT).sort((p,q)=>p.at-q.at)){ LATER.splice(LATER.indexOf(x),1); x.fn(); }
-  // beam: it weighs the brass that is on it
-  const target=-clamp((massOf(PAN.right.items)-massOf(PAN.left.items))/10, -1, 1)*SC.maxTilt;
-  beamAngle += (target-beamAngle)*Math.min(1,dt*1.8);
-  BEAM.rotation.z = beamAngle + Math.sin(t*1.7)*.0025;
-  for(const k of ['left','right']){ const s=k==='left'?-1:1, a=BEAM.rotation.z;
-    const P=PAN[k]; P.dipV += (-180*P.dip - 9*P.dipV)*dt; P.dip += P.dipV*dt;   // damped spring: the pan gives under an impact
-    P.g.position.set(SC.x + s*SC.arm*Math.cos(a), SC.pivotY + s*SC.arm*Math.sin(a) - SC.hang + P.dip, 0); }
-  // weights settle into their slots
-  for(const id in W){ const w=W[id]; const tp=targetOf(w), f=w.flight;
-    if(f){ f.t+=dt;
-      if(f.t<CARRY){ const u=easeIO(f.t/CARRY);                       // lift and carry, ending still above the slot
-        w.g.position.lerpVectors(f.from, _v.set(tp.x, tp.y+DROP_H, tp.z), u); w.g.position.y += Math.sin(u*Math.PI)*.35; }
-      else { const u=Math.min(1,(f.t-CARRY)/DROP_T);                  // free fall: distance grows with time squared
-        w.g.position.set(tp.x, tp.y + DROP_H*(1-u*u), tp.z); if(u>=1) land(w); }
-    } else { w.bounce+=dt;                                             // a short hop after impact, then it sits in its slot
-      w.g.position.set(tp.x, tp.y + Math.abs(Math.sin(w.bounce*17))*Math.exp(-w.bounce*7)*.08, tp.z); }
-    w.g.rotation.z += ((w.place==='table' && !f ? -.13 : 0) - w.g.rotation.z)*Math.min(1,dt*(w.place==='table'?14:5));
+const DIPK=160;
+function balanceStep(dt){
+  // the beam tips by what rests on each pan: a weight counts its size
+  const mass=P=>P.cols.flat().reduce((m,id)=>{ const w=W[id]; return w.flight ? m : m+w.size; }, 0);
+  const target=-clamp((mass(PLAT.us)-mass(PLAT.them))/6, -1, 1)*SC.maxTilt;
+  // critically damped: the beam swings to its angle and stops there, no wobble
+  BAL.om += (BAL.K*(target-BAL.th) - 2*Math.sqrt(BAL.K)*BAL.om)*dt; BAL.th += BAL.om*dt;
+  const s=Math.sin(BAL.th);
+  BEAM.rotation.z=BAL.th;
+  for(const P of Object.values(PLAT)){
+    P.dipV += (-DIPK*P.dip - 2*Math.sqrt(DIPK)*P.dipV)*dt; P.dip += P.dipV*dt;
+    // each pan hangs level from its beam end
+    P.x=SC.x+P.s*SC.A*Math.cos(BAL.th); P.y=SC.yP+P.s*SC.A*s+P.dip; P.top=P.y;
+    P.g.position.set(P.x, P.y, 0);
   }
-  // plumb bob
-  CRED.angle += (CRED.target-CRED.angle)*Math.min(1,dt*2.2);
-  CRED.rodG.rotation.z = CRED.angle + Math.sin(t*2.6)*.004;
-  // sheet unrolls
-  SHEET.open += (SHEET.target-SHEET.open)*Math.min(1,dt*2.2);
-  const o=Math.max(.001, SHEET.open); SHEET.mesh.scale.y=o;
-  SHEET.tex.repeat.set(1,o); SHEET.tex.offset.set(0,1-o);
-  redLamp.userData.pulse=(redLamp.userData.pulse||0)*Math.max(0,1-dt*1.1);
-  redLamp.intensity=redLamp.userData.pulse*(4+Math.sin(t*5)*1.5);
-  renderer.render(scene,camera); projectLabels(); requestAnimationFrame(frame);
 }
-addEventListener('resize', ()=>{ fitCamera(); renderer.setSize(innerWidth,innerHeight); });
-updateHud(); frame();
-window.__dbg={ audio, state, W, PAN, CRED, SHEET, camera, placeCrit, reveal, finish, outcome, BEST,
-  project:(x,y,z)=>{ const v=new THREE.Vector3(x,y,z).project(camera); return [(v.x+1)/2*innerWidth,(1-v.y)/2*innerHeight]; } };
+function stepWeight(w, dt){
+  const want = (w.hover && state.phase==='play' && !w.flight) || (w.win && !w.flight && PLAT[w.place]) ? 1 : 0;
+  w.glow += (want-w.glow)*Math.min(1, dt*14);
+  w.body.material.emissiveIntensity = w.glow*.55;
+  if(w.place==='hidden') return;
+  const f=w.flight, tp=targetPos(w);
+  if(f){
+    f.t+=dt;
+    if(f.t<f.carry){ const u=f.ease(f.t/f.carry); _b.copy(tp).add(f.approach);
+      w.g.position.lerpVectors(f.from, _b, u); w.g.position.y += Math.sin(u*Math.PI)*f.arc;
+      if(f.q) w.g.quaternion.slerpQuaternions(f.q0, f.q, u);
+      if(f.s!=null) w.g.scale.setScalar(f.s0.x+(f.s-f.s0.x)*u);
+    } else { const u=Math.min(1,(f.t-f.carry)/f.dropT);
+      w.g.position.copy(tp).addScaledVector(f.approach, 1-u*u);
+      if(f.q) w.g.quaternion.copy(f.q); if(f.s!=null) w.g.scale.setScalar(f.s);
+      if(u>=1) land(w); }
+    return;
+  }
+  // at rest it stands on what is under it, and falls when that is taken away
+  const p=w.g.position, gap=p.y-tp.y;
+  if(w.fallV || gap>.02){ w.fallV+=GRAV*dt; p.y-=w.fallV*dt;
+    if(p.y<=tp.y){ p.y=tp.y; if(w.fallV>1.6){ if(PLAT[w.place]) PLAT[w.place].dipV-=.35; sfx('place', .3); } w.fallV=0; } }
+  else p.y=tp.y;
+  p.x=tp.x; p.z=tp.z;
+}
+function simulate(dt){
+  gameT+=dt;
+  for(const x of LATER.filter(x=>x.at<=gameT).sort((p,q)=>p.at-q.at)){ LATER.splice(LATER.indexOf(x),1); x.fn(); }
+  balanceStep(dt);
+  for(const k in WINL){ const o=WINL[k], P=PLAT[k]; o.v += (o.want-o.v)*Math.min(1, dt*(o.want?6:2.5));
+    const Pl=PLATES[k]; Pl.lit.material.opacity=o.v; Pl.halo.material.opacity=o.v*.8; Pl.frameM.material.emissiveIntensity=o.v*.9; Pl.grp.scale.setScalar(1+o.v*.1); }
+  for(const w of WL) if(w.g.visible) stepWeight(w, dt);
+}
+const clock=new THREE.Clock();
+function frame(){
+  // A slow frame is cut into steps of 50 ms or less, so a slow laptop plays the meeting at the same pace; a gap longer
+  // than a quarter second (a hidden tab) is dropped.
+  const dt=Math.min(clock.getDelta(), .25), n=Math.ceil(dt/.05)||1;
+  for(let i=0;i<timeScale*n;i++) simulate(dt/n);   // a skip takes several normal steps; one big step would throw the springs
+  FR.u += (FR.uT-FR.u)*Math.min(1, dt*3); if(Math.abs(FR.uT-FR.u)<.001) FR.u=FR.uT;
+  frameCamera(); renderer.render(scene, camera); projectLabels(); requestAnimationFrame(frame);
+}
+frame();
+
+window.__dbg={ audio, state, shown, W, PLAT, sc, CONTENT, camera, place, remove, weigh, toScreen,
+  skip:()=>skipBtn.click(), get timeScale(){ return timeScale; }, get wf(){ return wfPx; },
+  busy:()=>LATER.length>0 || WL.some(w=>w.g.visible && (w.flight || w.fallV)),
+  // the best picks for this meeting from where the learner stands
+  best:()=>sc.bestFrom(state.round, state.won).picks[0] };
 </script>
 </body>
 </html>
