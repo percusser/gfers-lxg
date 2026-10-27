@@ -208,9 +208,9 @@ dialog#lb p { color: var(--ink); text-align: center; margin: 10px auto 0; }
     <div class="pic"><img class="shot" src="shots/rpg/play.webp" alt="RPG close-up: pitching Marcus Webb, a bank CIO, during an elevator ride, with four replies to choose from"></div>
     <div class="txt">
       <h3>Walk an office, talk to people, make calls the world remembers</h3>
-      <p>Long role-playing scenarios in an isometric office world. The learner walks between rooms, reads screens and whiteboards, questions people in close-up conversations and decides what to do. Trust, moods and later scenes all depend on earlier calls. It has 29 ready-made rooms, a cast of 16 people and its own scenario checker. The sample, <em>Agent Observability: Discovery</em>, is a discovery visit: you pick your character, ride the elevator with Lakeshore Bank's CIO, walk the building and find the people who own its AI agents and what hurts, in their own words.</p>
+      <p>Long role-playing scenarios in an isometric office world. The learner walks between rooms, reads screens and whiteboards, questions people in close-up conversations and decides what to do. Trust, moods and later scenes all depend on earlier calls. It has 29 ready-made rooms, a cast of 29 people and its own scenario checker. The sample, <em>Agent Observability: Discovery</em>, is a discovery visit: you pick your character, ride the elevator with Lakeshore Bank's CIO, walk the building and find the people who own its AI agents and what hurts, in their own words.</p>
       <p>Good for: incident response, stakeholder conversations, sales discovery, new-hire scenarios, anything where who you talk to and what you say matters.</p>
-      <a class="btn" href="../engines/rpg/agent-o11y-discovery/index.html">Play the sample</a>
+      <a class="btn" href="../engines/rpg/overview/index.html">See the rooms, cast and music</a><a class="btn ghost" href="../engines/rpg/agent-o11y-discovery/index.html">Play the sample</a>
     </div>
   </div>
 </div></section>
@@ -426,7 +426,7 @@ const FORMATS = [
     'A wall of instruments: a strip chart of seven months of usage, a clipboard of the customer\'s plans (a new site, a migration, a year-end audit), three billing levers and a commitment knob. Once locked, the months run one at a time and the printer prints each bill.',
     ['Choosing a pricing plan before a known change', 'Committing to a contract level when a seasonal spike is on the calendar', 'Setting a minimum purchase before a planned expansion'],
     ['A software renewal with seven months of history and five to run.'], ['play', 'result'], ''],
-  ['hangar', 'On Call', 'setup', '3D', 'Sets an alert on each of three machines, then watches a simulated day to see whether each warned the crew in time without false alarms.',
+  ['on-call', 'On Call', 'setup', '3D', 'Sets an alert on each of three machines, then watches a simulated day to see whether each warned the crew in time without false alarms.',
     'Clicking a machine shows seven days of its signal. The learner picks an alert type, sets its numbers, sees how often it would have fired last week, and activates it for good. A day runs in 72 seconds: a real problem hits each machine and a late alert lets the equipment fail. Each alert is graded Did its job, Too noisy, Too late or Missed it.',
     ['Alerts and thresholds in IT, cloud and network monitoring', 'Freezer, infusion pump or oxygen supply monitoring', 'Tank temperature and supply levels on a production line'],
     ['Northstar Air maintenance hangar.', 'Hollow Pine Brewing production floor.'], ['play', 'result'], '?case=0'],
@@ -477,7 +477,8 @@ const FORMATS = [
 ];
 const PLAY = [
   ['rpg', 'RPG', [
-    ['Agent Observability: Discovery', '', 'AI agents', 'agent-o11y-discovery/index.html']]],
+    ['Agent Observability: Discovery', '', 'AI agents', 'agent-o11y-discovery/index.html'],
+    ['Rooms, cast and music', '', 'Overview', 'overview/index.html']]],
   ['booth', 'Booth', [
     ['Deal desk', '', ''],
     ['Discovery review', '?scenario=discovery-review', '']]],
@@ -491,7 +492,7 @@ const PLAY = [
     ['Tidewell Streaming Kubernetes restarts', '?case=1', 'Case 2'],
     ['Kestrel Analytics EC2 CPU', '?case=2', 'Case 3'],
     ['Granite Peak Hosting switch discards', '?case=3', 'Case 4']]],
-  ['hangar', 'On Call', [
+  ['on-call', 'On Call', [
     ['Northstar Air maintenance hangar', '?case=0', 'Case 1'],
     ['Hollow Pine Brewing production floor', '?case=1', 'Case 2']]],
   ['node-graph', 'Node Graph', [
